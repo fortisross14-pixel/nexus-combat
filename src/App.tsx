@@ -18,7 +18,7 @@ import {CALENDAR,ROUNDS_PER_YEAR} from './engine/competition';
 import {CareerChart,RadarChart} from './components/Charts';
 import {ARCHETYPES,DIVISIONS,DIVISION_NAMES,MENTAL_DESCRIPTIONS,RARITY_COLORS,REGIONS,SKILLS,START_YEAR,STYLES,STYLE_DESCRIPTIONS} from './engine/constants';
 import {abilitiesOf,ageOf,baseOf,conditionLabel,overallOf} from './engine/career';
-import {advanceYears,prepareNextEvent,resolveCurrentEvent,resolveTournamentAction,resolveTournamentStage,resolveWholeTournament,createWorld,exportWorld,loadWorld,STORAGE_KEY,upgradeWorld} from './engine/world';
+import {advanceRound,advanceYears,prepareNextEvent,resolveCurrentEvent,resolveTournamentAction,resolveTournamentStage,resolveWholeTournament,createWorld,exportWorld,loadWorld,STORAGE_KEY,upgradeWorld} from './engine/world';
 import {readWorldDatabase,storeWorldDatabase} from './engine/persistence';
 import type {Division,Fighter,World,Rarity,WorldEvent} from './engine/types';
 
@@ -27,6 +27,7 @@ type ProfileTab='Overview'|'Development'|'Fight Record'|'Career'|'Legacy';
 const compact=(n:number)=>new Intl.NumberFormat('en-US').format(n);
 function Rating({n,color=true}:{n:number;color?:boolean}){return <span className={`rating-num ${color?(n>=90?'eliterating':n>=80?'strongrating':n>=70?'normalrating':'lowrating'):''}`}>{n}</span>;}
 function Badge({rarity}:{rarity:Rarity}){return <span className="rarity-pill" style={{'--rare':RARITY_COLORS[rarity]} as React.CSSProperties}><i/>{rarity}</span>}
+function Country({fighter}:{fighter:Fighter}){return <span className="country-label"><b>{fighter.flag}</b>{fighter.country}</span>}
 function MiniFighter({fighter,onClick,year,sub}:{fighter:Fighter;onClick:(id:string)=>void;year:number;sub?:string}){
   return <button className="mini-fighter" onClick={()=>onClick(fighter.id)}><Avatar fighter={fighter} size={48}/><span className="mf-text"><strong>{fighter.name}</strong><small>{sub||`${fighter.flag} ${fighter.style}`}</small></span><span className="mini-rating">{overallOf(fighter,year)}</span><ChevronRight size={16} className="dim"/></button>;
 }
@@ -71,6 +72,8 @@ export function App(){
   const navigate=(p:Page)=>{setPage(p);setMenuOpen(false);window.scrollTo({top:0,behavior:'smooth'});};
   const openProfile=(id:string)=>{setSelectedId(id);setProfileTab('Overview');};
   const simulate=(n:number)=>{if(!hydrated||staged)return;setWorld(old=>advanceYears(old,n));setToast(`${n} ${n===1?'season':'seasons'} fast-simulated · major fights automatically resolved`);};
+  const simulateCircuitWeek=()=>{if(!hydrated||staged)return;setWorld(old=>advanceRound(old));setToast('Next S-Tier, Global D2 and continental cards simulated');};
+  const simulateToMajor=()=>{if(!hydrated||staged)return;setWorld(old=>{let next=old,guard=0;while(CALENDAR[next.round]?.week!==5&&guard++<5)next=advanceRound(next);return next;});setToast('Circuit advanced to the next monthly marquee');};
   const prepareEvent=()=>{if(!hydrated||staged)return;setWorld(old=>prepareNextEvent(old));setPage(kindAt(world.year,world.round)||world.activeTournamentId?'Tournaments':'Fight Night');};
   const nextTournament=()=>{if(!hydrated||staged||!world.activeTournamentId)return;const result=resolveTournamentAction(world);setWorld(result.world);};
   const watchTournament=()=>{if(!hydrated||staged||!world.activeTournamentId)return;const result=resolveTournamentAction(world);if(result.fightId)setStaged(result);else setWorld(result.world);};
