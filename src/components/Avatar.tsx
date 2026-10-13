@@ -1,6 +1,8 @@
 import {useId} from 'react';
-import spriteAtlasUrl from '../assets/portrait-sprites.svg?url';
 import type {Fighter, Style} from '../engine/types';
+
+// Vite bundles the referenced SVG; this needs no special ?url TypeScript declaration.
+const spriteAtlasUrl = new URL('../assets/portrait-sprites.svg', import.meta.url).href;
 
 interface Props {fighter:Fighter;size?:number;className?:string;}
 
