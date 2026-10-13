@@ -369,7 +369,8 @@ function ensureCurrent(w:World):World{
  w.belts??=emptyBelts();w.beltReservations??=null;
  w.user??={followed:[],picks:[],pendingPick:null};
  for(const b of [w.crown,...Object.values(w.belts)]){b.interimId??=null;b.interimReigns??=[];b.mandatoryId??=null;}
- for(const f of w.fighters){const country=countryNamed(f.country);if(country)f.flag=country.flag;if(f.status==='active')f.shape=clamp(f.shape,-FORM_MAX,FORM_MAX);}
+ for(const f of w.fighters)if(f.status==='active')f.shape=clamp(f.shape,-FORM_MAX,FORM_MAX);
+ for(const f of w.fighters){const country=countryNamed(f.country);if(country)f.flag=country.flag;}
  pinChampionForm(w);
  return w;
 }

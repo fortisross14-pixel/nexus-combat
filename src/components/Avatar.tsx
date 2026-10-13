@@ -65,6 +65,9 @@ export function Avatar({fighter,size=58,className=''}:Props){
       {layer(`mouth-${mouth}-${skin}`)}
       {layer(`hair-${hair}-${tone}`)}
       {detail>0&&layer(`detail-${detail}`)}
+      <ellipse cx="90" cy="103" rx="31" ry="42" fill="#051017" opacity=".045"/>
+      {identity%3===0&&<><circle cx="77" cy="90" r="1.5" fill="#7b443b" opacity=".38"/><circle cx="104" cy="92" r="1.2" fill="#7b443b" opacity=".35"/></>}
+      {identity%5===0&&<path d="M70 126Q90 132 110 126" fill="none" stroke="#fff" strokeOpacity=".16" strokeWidth="1"/>}
       {elite&&<><path d="M12 181H55M125 181H168" stroke={emblem} strokeWidth="2" strokeOpacity=".5"/><path d="M12 20V11H21M159 11H168V20" stroke={emblem} strokeWidth="2" strokeOpacity=".54" fill="none"/></>}
       <path d="M1 184H179" stroke="#c9e5ed" strokeOpacity=".16"/>
       <rect x="0" y="184" width="180" height="16" fill="#121b25" fillOpacity=".68"/>

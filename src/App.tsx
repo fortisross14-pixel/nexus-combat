@@ -11,8 +11,13 @@ import {CompareDialog} from './components/TaleOfTheTape';
 import {LegacyCenter,FighterLegacyPanel,CareerChronicle} from './components/LegacyCenter';
 import {TournamentCenter} from './components/TournamentCenter';
 import {eventNameAt,kindAt} from './engine/tournaments';
-import {CrownLineage,EventCalendar,FightNight,LiveFight} from './components/LiveArena';
+import {FightNight,LiveFight} from './components/LiveArena';
 import {SeasonFinale} from './components/SeasonFinale';
+import {UniverseHub} from './components/UniverseHub';
+import {WorldChronicle} from './components/WorldChronicle';
+import './components/complete-pass.css';
+import {CalendarV2} from './components/CalendarV2';
+import './components/sim-rail.css';
 import './components/live-arena.css';
 import {CALENDAR,ROUNDS_PER_YEAR} from './engine/competition';
 import {CareerChart,RadarChart} from './components/Charts';
@@ -40,6 +45,8 @@ function AppLogo(){return <div className="logo-mark"><div className="logo-glyph"
 function NewWorldDialog({onCancel,onCreate}:{onCancel:()=>void;onCreate:(seed:number)=>void}){const [seed,setSeed]=useState(String(20582058));return <div className="overlay" onClick={onCancel}><div className="dialog" onClick={e=>e.stopPropagation()}><div className="dialog-top"><h2>Initialize new universe</h2><button className="icon-button" onClick={onCancel}><X size={18}/></button></div><p>Regenerate the founding 2058 roster. The current world will be overwritten on this device—export it first if you wish to keep it.</p><label htmlFor="seed">WORLD SEED</label><input id="seed" className="text-input" value={seed} onChange={e=>setSeed(e.target.value)} type="number"/><div className="dialog-actions"><button className="btn btn-quiet" onClick={onCancel}>Cancel</button><button className="btn btn-danger" onClick={()=>onCreate(Number(seed)||20582058)}>Create world <ArrowRight size={16}/></button></div></div></div>}
 export function App(){
   const [world,setWorld]=useState<World>(()=>loadWorld());
+  const [universeOpen,setUniverseOpen]=useState(true);const [activeSlot,setActiveSlot]=useState<number|null>(null);
+  const [slots,setSlots]=useState<(World|null)[]>(()=>[0,1,2].map(i=>{try{const raw=localStorage.getItem(`nexus-universe-${i}`);return raw?upgradeWorld(JSON.parse(raw)):null;}catch{return null;}}));
   const [page,setPage]=useState<Page>('Dashboard');
   const [selectedId,setSelectedId]=useState<string|null>(null);const [selectedFightId,setSelectedFightId]=useState<string|null>(null);const [profileTab,setProfileTab]=useState<ProfileTab>('Overview');
   const [division,setDivision]=useState<Division>('S-TIER');const [search,setSearch]=useState('');const [filterStyle,setFilterStyle]=useState('All styles');
@@ -54,6 +61,7 @@ export function App(){
     const timer=setTimeout(()=>{
       // Early worlds also keep a small synchronous startup backup; IndexedDB is authoritative.
       try{if(world.year<=START_YEAR+1){const json=JSON.stringify(world);if(json.length<1850000)localStorage.setItem(STORAGE_KEY,json);else localStorage.removeItem(STORAGE_KEY);}else localStorage.removeItem(STORAGE_KEY);}catch{/* Private browsing may disable localStorage. */}
+      try{if(activeSlot!==null)localStorage.setItem(`nexus-universe-${activeSlot}`,JSON.stringify(world));}catch{/* secondary slot save is best effort */}
       void storeWorldDatabase(world).catch(()=>{setToast('Automatic storage unavailable. Export a JSON backup of this world.');});
     },450);
     return()=>clearTimeout(timer);
@@ -68,9 +76,14 @@ export function App(){
   const selected=selectedId?world.fighters.find(f=>f.id===selectedId):undefined;
   const selectedFight=selectedFightId?getFight(world,selectedFightId):undefined;
   const totalBouts=useMemo(()=>ledgerCount(world),[world]);const isFounding=world.year===START_YEAR&&totalBouts===0;
+  const openUniverse=(slot:number)=>{const saved=slots[slot];if(saved){setWorld(saved);setActiveSlot(slot);setUniverseOpen(false);return;}const fresh=createWorld(20582058+slot*7919);setSlots(old=>old.map((x,i)=>i===slot?fresh:x));setWorld(fresh);setActiveSlot(slot);setUniverseOpen(false);};
+  const createUniverse=(slot:number)=>{const fresh=createWorld(20582058+slot*7919);setSlots(old=>old.map((x,i)=>i===slot?fresh:x));setWorld(fresh);setActiveSlot(slot);setUniverseOpen(false);};
+  const deleteUniverse=(slot:number)=>{try{localStorage.removeItem(`nexus-universe-${slot}`);}catch{}setSlots(old=>old.map((x,i)=>i===slot?null:x));};
   const navigate=(p:Page)=>{setPage(p);setMenuOpen(false);window.scrollTo({top:0,behavior:'smooth'});};
   const openProfile=(id:string)=>{setSelectedId(id);setProfileTab('Overview');};
   const simulate=(n:number)=>{if(!hydrated||staged)return;setWorld(old=>advanceYears(old,n));setToast(`${n} ${n===1?'season':'seasons'} fast-simulated · major fights automatically resolved`);};
+  const simulateToNextS=()=>{if(!hydrated||staged)return;prepareEvent();setToast('Advanced to the next S Division event · other divisions recorded compact results');};
+  const simulateToBig=()=>{if(!hydrated||staged)return;setWorld(old=>advanceYears(old,1));setToast('Advanced to the next big monthly event');};
   const prepareEvent=()=>{if(!hydrated||staged)return;setWorld(old=>prepareNextEvent(old));setPage(kindAt(world.year,world.round)||world.activeTournamentId?'Tournaments':'Fight Night');};
   const nextTournament=()=>{if(!hydrated||staged||!world.activeTournamentId)return;const result=resolveTournamentAction(world);setWorld(result.world);};
   const watchTournament=()=>{if(!hydrated||staged||!world.activeTournamentId)return;const result=resolveTournamentAction(world);if(result.fightId)setStaged(result);else setWorld(result.world);};
@@ -85,6 +98,7 @@ export function App(){
     {heading:'THE CIRCUIT',items:[{name:'Dashboard',label:'Overview',icon:<LayoutDashboard size={19}/>},{name:'Event Calendar',label:'Calendar',icon:<CalendarClock size={19}/>},{name:'Fight Night',label:'Fight Night',icon:<Swords size={19}/>},{name:'Tournaments',label:'Tournaments',icon:<Medal size={19}/>}]},
     {heading:'SCOUT & EXPLORE',items:[{name:'Divisions',label:'Divisions',icon:<Shield size={19}/>},{name:'Fighters',label:'Fighter Database',icon:<Users size={19}/>},{name:'Fight Center',label:'Fight Archive',icon:<BookOpen size={19}/>}]},
     {heading:'THE CHRONICLE',items:[{name:'Statistics',label:'Statistics',icon:<BarChart3 size={19}/>},{name:'Development',label:'Development',icon:<Activity size={19}/>},{name:'World History',label:'World History',icon:<FileClock size={19}/>}]}];
+  if(universeOpen)return <UniverseHub slots={slots} onOpen={openUniverse} onCreate={createUniverse} onDelete={deleteUniverse}/>;
   return <div className={`app-frame ${!hydrated?'app-loading':''}`}>
     {menuOpen&&<div className="mobile-scrim" onClick={()=>setMenuOpen(false)}/>}
     <aside className={`sidebar ${menuOpen?'sidebar-open':''}`}>
@@ -95,7 +109,7 @@ export function App(){
     <main className="main-area">
       <header className="topbar"><button className="icon-button mobile-menu" onClick={()=>setMenuOpen(!menuOpen)} aria-label="Toggle menu"><Menu size={22}/></button><div className="topbar-identity"><span className="live-dot"/><span>GLOBAL CIRCUIT</span><i/> <strong>{CALENDAR[world.round]?.month.toUpperCase()||'JANUARY'} · WEEK {(world.round%5)+1}</strong></div><div className="topbar-actions"><div className="year-capsule"><span>SIMULATION YEAR</span><strong>{world.year}</strong></div><button className="top-icon" onClick={()=>exportWorld(world)} title="Export world save" aria-label="Export world save"><Download size={18}/></button><button className="top-icon" onClick={()=>importRef.current?.click()} title="Import world save" aria-label="Import world save"><Upload size={18}/></button><button className="top-icon" onClick={()=>setResetOpen(true)} title="New universe" aria-label="New universe"><RefreshCcw size={18}/></button></div></header>
       <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>{void importFile(e.target.files?.[0]);e.target.value='';}}/>
-      <div className="content-area">
+      <div className="content-area"><div className="sim-float-controls"><button onClick={simulateToNextS}><Zap size={15}/> Next S event</button><button onClick={simulateToBig}><Crown size={15}/> Next big event</button></div>
         {page==='Dashboard'&&<>
           
           <section className="hero"><div className="hero-copy"><span className="hero-eyebrow"><span className="live-dot"/> NEXUS GLOBAL CIRCUIT · {world.year}</span><h1>Every legend<br/>has a <em>beginning.</em></h1><p>{isFounding?'The first 200 fighters have entered NEXUS. Start the competitive circuit to see the first upsets, knockouts and ranked challengers.':`Year ${world.year}. ${totalBouts.toLocaleString()} recorded bouts, ${world.fighters.filter(f=>f.status==='retired').length} retired fighters and a continuously shifting competitive ladder.`}</p><div className="hero-buttons"><button className="btn btn-primary" onClick={prepareEvent}><Zap size={17} fill="currentColor"/> {world.activeTournamentId?'Enter Tournament':world.pendingFight?'Enter Fight Night':`Next: ${eventNameAt(world.year,world.round)||CALENDAR[world.round].name}`}  <ArrowRight size={16}/></button><button className="btn btn-secondary" onClick={()=>simulate(1)}><CalendarClock size={17}/> Fast sim year</button><button className="btn btn-quiet" onClick={()=>simulate(5)}>+5 Years</button></div><div className="hero-foot">{totalBouts} OFFICIAL FIGHTS <span className="tiny-sep">|</span> EVENT {world.round+1} / {ROUNDS_PER_YEAR}</div></div><div className="hero-art"><div className="hero-orbit"/><div className="hero-portrait"><Avatar fighter={champion||top} size={285}/></div><div className="hero-art-label"><Crown size={14}/> {champion?'WORLD CHAMPION':'S-TIER #01 RANK'} <strong>{(champion||top).name}</strong></div></div></section>
@@ -110,7 +124,7 @@ export function App(){
           <section className="panel digest-panel"><SectionHeading eyebrow="THE NEXT GENERATION" title="Prospect watch" end={<span className="subtle-tag">AGE ≤ 24</span>}/><p className="panel-intro">Youth, projected talent and future possibilities. These ratings reflect current skill—not guaranteed future greatness.</p><div className="prospect-list">{youth.map((f,i)=><div key={f.id} className="prospect-row"><span className="prospect-counter">0{i+1}</span><MiniFighter fighter={f} onClick={openProfile} year={world.year} sub={`${f.flag} Age ${ageOf(f,world.year)} · ${f.style}`}/></div>)}</div><div className="separator"/><div className="roadmap-mini"><div className="roadmap-icon"><Swords size={18}/></div><div><strong>Combat engine online</strong><small>Watch official results in Fight Center. Rankings are recalculated after every bout.</small></div><ChevronRight size={16}/></div></section></div>
           <div className="dashboard-columns lower-columns"><section className="panel"><SectionHeading eyebrow="FEDERATION STRUCTURE" title="The ten divisions" end={<button className="text-link" onClick={()=>navigate('Divisions')}>Explore <ArrowRight size={15}/></button>}/><div className="division-mosaic">{DIVISIONS.map((d,i)=><button key={d} onClick={()=>{setDivision(d);navigate('Divisions')}}><span className={`division-icon ${i<2?'apex':''}`}>{i===0?<Crown size={17}/>:i===1?<Shield size={17}/>:<Hexagon size={15}/>}</span><span>{DIVISION_NAMES[d]}</span><strong>20 <ChevronRight size={13}/></strong></button>)}</div></section><section className="panel"><SectionHeading eyebrow="CHRONICLE FEED" title="World developments" end={<button className="text-link" onClick={()=>navigate('World History')}>View all <ArrowRight size={15}/></button>}/>{world.events.length===0?<div className="empty-feed"><div className="empty-feed-symbol"><Sparkles size={29}/></div><strong>History starts here.</strong><span>Advance the calendar to witness the first promotions, retirements and emerging prospects.</span></div>:<div className="feed-list">{world.events.slice(-6).reverse().map((e,i)=><button key={`${e.year}-${i}-${e.fighterId}`} className="feed-row" onClick={()=>openProfile(e.fighterId)}><span className={`feed-mark ${e.type}`}><HistoryIcon type={e.type}/></span><span><strong>{world.fighters.find(f=>f.id===e.fighterId)?.name||'Unknown'}</strong><small>{e.description}</small></span><time>{e.year}</time></button>)}</div>}</section></div>
         </>}
-        {page==='Event Calendar'&&<EventCalendar world={world} onPrepare={prepareEvent} onFighter={openProfile}/ >}
+        {page==='Event Calendar'&&<CalendarV2 world={world} onPrepare={prepareEvent} onFighter={openProfile}/ >}
         {page==='Tournaments'&&<TournamentCenter onTape={(a,b)=>{setCompareId(a);setCompareWith(b);}} world={world} onStart={prepareEvent} onWatch={watchTournament} onSkip={nextTournament} onSkipStage={skipTournamentStage} onFinish={finishTournament} onFighter={openProfile} onFight={setSelectedFightId}/>}
         
         {page==='Fight Night'&&<FightNight world={world} onPick={id=>setWorld(old=>makePick(old,id))} onPrepare={prepareEvent} onWatch={watchHeadliner} onSkip={skipHeadliner} onFighter={openProfile} onFight={setSelectedFightId}/ >}
@@ -126,7 +140,7 @@ export function App(){
         </>}
         {page==='Statistics'&&legacy&&<LegacyCenter world={world} view={legacy} onFighter={openProfile} onFight={setSelectedFightId}/>}
         {page==='Development'&&<DevelopmentPage world={world} onSelect={openProfile} />}
-        {page==='World History'&&<><HistoryPage world={world} onSelect={openProfile} /><div className="history-crown-extension"><CrownLineage world={world} onFighter={openProfile}/></div></>}
+        {page==='World History'&&<WorldChronicle world={world} onFighter={openProfile}/>} 
       </div>
       <footer className="footer"><span>NEXUS COMBAT CHRONICLE <span className="tiny-sep">//</span> 2058—∞</span><span>v1.0.1 · PORTRAIT EDITION <span className="tiny-sep">|</span> AUTOSAVED LOCALLY</span></footer>
     </main>
@@ -166,7 +180,7 @@ function DevelopmentPage({world,onSelect}:{world:World;onSelect:(id:string)=>voi
   const ageBuckets=[{label:'18–22',start:18,end:22},{label:'23–27',start:23,end:27},{label:'28–32',start:28,end:32},{label:'33–37',start:33,end:37},{label:'38+',start:38,end:99}].map(b=>({...b,count:active.filter(f=>ageOf(f,world.year)>=b.start&&ageOf(f,world.year)<=b.end).length}));
   return <><PageTop tag="CAREER SCIENCE" title="Development" accent="Lab." description="Underlying annual ability is different from form and readiness. See how the next generation develops—and how established fighters eventually decline."/><div className="dev-stat-row"><Stat icon={<Activity size={19}/>} label="AVERAGE BASE" value={Math.round(active.reduce((s,f)=>s+baseOf(f,world.year),0)/200)} detail="World-wide ability index"/><Stat icon={<TrendingUp size={19}/>} label="RISING BASE" value={seasoned.filter(f=>baseOf(f,world.year)>f.history.at(-2)!.base).length} detail="Improved this season"/><Stat icon={<TrendingDown size={19}/>} label="DECLINING BASE" value={seasoned.filter(f=>baseOf(f,world.year)<f.history.at(-2)!.base).length} detail="Past peak or volatile"/></div><div className="dashboard-columns"><div className="panel"><SectionHeading eyebrow="LONG-TERM DEVELOPMENT" title="Career archetypes"/><p className="panel-intro">Six distinct trajectories create different paths to greatness. Future potential remains hidden in fighter profiles.</p><div className="hbar-list">{dist.map(d=><div className="hbar-row" key={d.label}><span>{d.label}</span><div><i style={{width:`${d.number/Math.max(...dist.map(x=>x.number))*100}%`}}/></div><strong>{d.number}</strong></div>)}</div></div><div className="panel"><SectionHeading eyebrow="GENERATIONS" title="Population by age"/><p className="panel-intro">Every season creates new 18–21-year-old prospects to replace retired fighters. The league remains exactly 200 strong.</p><div className="age-bars">{ageBuckets.map(b=><div key={b.label} className="age-bar"><div className="age-column"><i style={{height:`${b.count/Math.max(1,...ageBuckets.map(x=>x.count))*100}%`}}/></div><strong>{b.count}</strong><span>{b.label}</span></div>)}</div></div></div><div className="dashboard-columns lower-columns"><div className="panel"><SectionHeading eyebrow="YEARLY MOVEMENT" title="Fastest improving" end={<Pill kind="positive">BASE RATING</Pill>}/>{improvers.length===0?<p className="empty-msg">Advance one year to reveal development changes.</p>:improvers.map(({fighter:f,delta})=><div className="dev-fighter-row" key={f.id}><MiniFighter fighter={f} onClick={onSelect} year={world.year}/><span className="change-chip up"><TrendingUp size={14}/> +{delta}</span></div>)}</div><div className="panel"><SectionHeading eyebrow="YEARLY MOVEMENT" title="Largest declines" end={<Pill>BASE RATING</Pill>}/>{declining.length===0?<p className="empty-msg">Advance one year to reveal development changes.</p>:declining.map(({fighter:f,delta})=><div className="dev-fighter-row" key={f.id}><MiniFighter fighter={f} onClick={onSelect} year={world.year}/><span className={`change-chip ${delta<0?'down':''}`}><TrendingDown size={14}/> {delta>0?'+':''}{delta}</span></div>)}</div></div><div className="info-note"><Info size={17}/><span><strong>Career engine:</strong> Base scores follow private career curves. Form responds to real results and recovers gradually during time off. Condition reflects combat damage, medical suspensions and rest. Individual fighter records remain permanent.</span></div></>;
 }
-function HistoryPage({world,onSelect}:{world:World;onSelect:(id:string)=>void}){
+export function HistoryPage({world,onSelect}:{world:World;onSelect:(id:string)=>void}){
   const [eventFilter,setEventFilter]=useState('All');const [limit,setLimit]=useState(40);
   const followed=new Set(userOf(world).followed);const list=world.events.filter(e=>eventFilter==='All'||eventFilter==='Followed'?(eventFilter==='All'||followed.has(e.fighterId)):e.type===eventFilter.toLowerCase()).slice().reverse().slice(0,limit);
   const totalBouts=ledgerCount(world);

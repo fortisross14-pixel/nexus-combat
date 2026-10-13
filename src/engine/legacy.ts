@@ -7,8 +7,8 @@ import {STAT} from './combat';
 
 export interface FighterLegacy {fighter:Fighter;wins:number;losses:number;draws:number;kos:number;subs:number;winPct:number;defenses:number;reigns:number;titleDays:number;crucibles:number;surges:number;golds:number;upsets:number;eliteWins:number;greatness:number;fame:number;
  /** Continental belt reigns and defenses. */beltReigns:number;beltDefenses:number;}
-export interface Rivalry {a:string;b:string;meetings:number;winsA:number;winsB:number;draws:number;titleFights:number;closeFights:number;lastYear:number;score:number;fightIds:string[];
- /** World Crown meetings and meetings on the global circuit (S-Tier, Global D2 or any title). */worldTitleFights:number;eliteMeetings:number;tournamentMeetings:number;}
+export interface Rivalry {a:string;b:string;meetings:number;winsA:number;winsB:number;draws:number;titleFights:number;tournamentMeetings:number;closeFights:number;lastYear:number;score:number;fightIds:string[];
+ /** World Crown meetings and meetings on the global circuit (S-Tier, Global D2 or any title). */worldTitleFights:number;eliteMeetings:number;}
 export interface LegacyView {fighters:FighterLegacy[];rivalries:Rivalry[];byFighter:Map<string,FighterLegacy>;}
 const key=(a:string,b:string)=>a<b?`${a}|${b}`:`${b}|${a}`;
 const isFinish=(m:LedgerEntry['m'])=>m==='KO'||m==='TKO'||m==='SUB';
@@ -28,16 +28,16 @@ export function buildLegacyView(w:World):LegacyView {
  for(const t of w.tournaments){if(t.status!=='complete'||!t.winnerId)continue;const x=byFighter.get(t.winnerId);if(!x)continue;if(t.kind==='CRUCIBLE')x.crucibles++;if(t.kind==='SURGE')x.surges++;if(t.kind==='OLYMPIAD')x.golds++;}
  forEachLedger(w,e=>{
   const k=key(e.a,e.b),ordered=e.a<e.b?[e.a,e.b]:[e.b,e.a];
-  let r=rivalMap.get(k);if(!r){r={a:ordered[0],b:ordered[1],meetings:0,winsA:0,winsB:0,draws:0,titleFights:0,closeFights:0,lastYear:e.y,score:0,fightIds:[],worldTitleFights:0,eliteMeetings:0,tournamentMeetings:0};rivalMap.set(k,r);}
+  let r=rivalMap.get(k);if(!r){r={a:ordered[0],b:ordered[1],meetings:0,winsA:0,winsB:0,draws:0,titleFights:0,tournamentMeetings:0,closeFights:0,lastYear:e.y,score:0,fightIds:[],worldTitleFights:0,eliteMeetings:0};rivalMap.set(k,r);}
   r.meetings++;r.lastYear=Math.max(r.lastYear,e.y);r.fightIds.push(e.i);
   if(e.w===r.a)r.winsA++;else if(e.w===r.b)r.winsB++;else r.draws++;
-  if(e.f&LF.TITLE)r.titleFights++;if(e.f&LF.CLOSE)r.closeFights++;if(e.s==='Semifinal'||e.s==='Final')r.tournamentMeetings++;
+  if(e.f&LF.TITLE)r.titleFights++;if(e.t)r.tournamentMeetings++;if(e.f&LF.CLOSE)r.closeFights++;
   if(isWorldTitle(e))r.worldTitleFights++;if(e.f&LF.TITLE||e.d==='S-TIER'||e.d==='GLOBAL D2'||e.s==='Final'||e.s==='Semifinal')r.eliteMeetings++;
   if(e.t)return;
   const victor=e.w?byFighter.get(e.w):undefined;
   if(victor){if(e.f&LF.UPSET)victor.upsets++;if(isWorldTitle(e)||e.d==='S-TIER')victor.eliteWins++;}
  });
- // Rivalries require both history and meaningful stakes; repeat matchmaking alone is not enough.
+ // Sustained rivalries need four meetings and at least two championship or tournament meetings.
  const rivalries=[...rivalMap.values()].filter(r=>{const both=r.winsA>0&&r.winsB>0;
    return r.meetings>=4&&r.titleFights+r.tournamentMeetings>=2&&(both||r.worldTitleFights>=2||r.titleFights>=2);})
   .map(r=>({...r,score:r.meetings*4+r.eliteMeetings*3+r.worldTitleFights*14+(r.titleFights-r.worldTitleFights)*5+r.closeFights*4+Math.min(r.winsA,r.winsB)*8})).sort((a,b)=>b.score-a.score||b.lastYear-a.lastYear);
