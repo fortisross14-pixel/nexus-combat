@@ -3,7 +3,7 @@ import {Crown} from 'lucide-react';
 import {Avatar} from './Avatar';
 import {Flag} from './Flag';
 import {RARITY_COLORS} from '../engine/constants';
-import {BELT_SHORT,beltsHeld} from '../engine/belts';
+import {BELT_SHORT,beltsHeld,isInterimChampion} from '../engine/belts';
 import {CALENDAR,MONTH_OF,ROUNDS_PER_YEAR} from '../engine/competition';
 import type {Fighter,Rarity,World} from '../engine/types';
 
@@ -20,7 +20,7 @@ export function Heading({eyebrow,title,end}:{eyebrow?:string;title:string;end?:R
  return <div className="section-heading"><div>{eyebrow&&<div className="eyebrow">{eyebrow}</div>}<h2>{title}</h2></div>{end}</div>;
 }
 export function BeltChips({world,id}:{world:World;id:string}){
- return <>{beltsHeld(world,id).map(b=><span key={b} className="belt-chip"><Crown size={10}/>{BELT_SHORT[b]}</span>)}{world.crown.interimId===id&&<span className="belt-chip">INTERIM</span>}</>;
+ return <>{beltsHeld(world,id).map(b=><span key={b} className="belt-chip"><Crown size={10}/>{BELT_SHORT[b]}</span>)}{isInterimChampion(world,id)&&<span className="belt-chip">INTERIM</span>}{world.titleShot?.fighterId===id&&<span className="belt-chip shot">TITLE SHOT</span>}</>;
 }
 /** One-line fighter identity used across lists. */
 export function FighterLine({f,world,onFighter,sub,size=40,right}:{f:Fighter;world:World;onFighter:(id:string)=>void;sub?:ReactNode;size?:number;right?:ReactNode}){

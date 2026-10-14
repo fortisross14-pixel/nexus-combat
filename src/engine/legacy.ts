@@ -1,12 +1,13 @@
 import type {Fighter,Fight,World,SeasonAwards,IconicMoment,HallInductee,LedgerEntry} from './types';
 import {ageOf} from './career';
-import {START_YEAR} from './constants';
+import {START_YEAR,isTopDivision,isSecondDivision} from './constants';
 import {LF,expandLedger,forEachLedger,eventNameOf,isWorldTitle} from './archive';
-import {CONTINENTAL_BELTS} from './belts';
+import {CONTINENTAL_BELTS,topReigns} from './belts';
 import {STAT} from './combat';
 
 export interface FighterLegacy {fighter:Fighter;wins:number;losses:number;draws:number;kos:number;subs:number;winPct:number;defenses:number;reigns:number;titleDays:number;crucibles:number;surges:number;golds:number;upsets:number;eliteWins:number;greatness:number;fame:number;
- /** Continental belt reigns and defenses. */beltReigns:number;beltDefenses:number;}
+ /** Continental belt reigns and defenses. */beltReigns:number;beltDefenses:number;
+ /** Pinnacle Crowns (NOVA v ONYX unifier wins) and Doubles Crown reigns fought for. */pinnacles:number;doubles:number;}
 export interface Rivalry {a:string;b:string;meetings:number;winsA:number;winsB:number;draws:number;titleFights:number;tournamentMeetings:number;closeFights:number;lastYear:number;score:number;fightIds:string[];
  /** World Crown meetings and meetings on the global circuit (S-Tier, Global D2 or any title). */worldTitleFights:number;eliteMeetings:number;}
 export interface LegacyView {fighters:FighterLegacy[];rivalries:Rivalry[];byFighter:Map<string,FighterLegacy>;}
@@ -17,13 +18,15 @@ function dateIndex(year:number,round:number){return Math.round(year*365.2425+(Ma
 export function reignDuration(w:World,reign:World['crown']['reigns'][number]){
  return Math.max(0,dateIndex(reign.endYear??w.year,reign.endRound??Math.max(1,w.round))-dateIndex(reign.startYear,reign.startRound));
 }
-const blank=(fighter:Fighter):FighterLegacy=>({fighter,wins:0,losses:0,draws:0,kos:0,subs:0,winPct:0,defenses:0,reigns:0,titleDays:0,crucibles:0,surges:0,golds:0,upsets:0,eliteWins:0,greatness:0,fame:fighter.fame||0,beltReigns:0,beltDefenses:0});
-const greatness=(x:FighterLegacy,streak=0)=>Math.round(x.wins*1.2+x.kos*.65+x.subs*.8+x.defenses*20+x.reigns*36+x.titleDays/40+x.crucibles*42+x.surges*30+x.golds*75+x.eliteWins*1.4+x.upsets*2.5+streak*1.4+x.beltReigns*12+x.beltDefenses*5);
+const blank=(fighter:Fighter):FighterLegacy=>({fighter,wins:0,losses:0,draws:0,kos:0,subs:0,winPct:0,defenses:0,reigns:0,titleDays:0,crucibles:0,surges:0,golds:0,upsets:0,eliteWins:0,greatness:0,fame:fighter.fame||0,beltReigns:0,beltDefenses:0,pinnacles:0,doubles:0});
+const greatness=(x:FighterLegacy,streak=0)=>Math.round(x.wins*1.2+x.kos*.65+x.subs*.8+x.defenses*20+x.reigns*36+x.titleDays/40+x.crucibles*42+x.surges*30+x.golds*75+x.eliteWins*1.4+x.upsets*2.5+streak*1.4+x.beltReigns*12+x.beltDefenses*5+x.pinnacles*55+x.doubles*10);
 export function buildLegacyView(w:World):LegacyView {
  const rivalMap=new Map<string,Rivalry>();
  const byFighter=new Map<string,FighterLegacy>();
  for(const fighter of w.fighters){const x=blank(fighter);x.wins=fighter.record.wins;x.losses=fighter.record.losses;x.draws=fighter.record.draws;x.kos=fighter.record.kos;x.subs=fighter.record.submissions;x.winPct=100*x.wins/Math.max(1,x.wins+x.losses+x.draws);byFighter.set(fighter.id,x);}
- for(const reign of w.crown.reigns){const x=byFighter.get(reign.fighterId);if(x){x.reigns++;x.defenses+=reign.defenses;x.titleDays+=reignDuration(w,reign);}}
+ for(const reign of topReigns(w)){const x=byFighter.get(reign.fighterId);if(x){if(reign.via!=='split')x.reigns++;x.defenses+=reign.defenses;x.titleDays+=reignDuration(w,reign);}}
+ for(const p of w.pinnacle??[]){const x=byFighter.get(p.winnerId);if(x)x.pinnacles++;}
+ for(const r of w.tag?.reigns??[])for(const id of r.fighters){const x=byFighter.get(id);if(x)x.doubles++;}
  for(const belt of CONTINENTAL_BELTS)for(const reign of w.belts[belt].reigns){const x=byFighter.get(reign.fighterId);if(x){x.beltReigns++;x.beltDefenses+=reign.defenses;}}
  for(const t of w.tournaments){if(t.status!=='complete'||!t.winnerId)continue;const x=byFighter.get(t.winnerId);if(!x)continue;if(t.kind==='CRUCIBLE')x.crucibles++;if(t.kind==='SURGE')x.surges++;if(t.kind==='OLYMPIAD')x.golds++;}
  forEachLedger(w,e=>{
@@ -32,10 +35,10 @@ export function buildLegacyView(w:World):LegacyView {
   r.meetings++;r.lastYear=Math.max(r.lastYear,e.y);r.fightIds.push(e.i);
   if(e.w===r.a)r.winsA++;else if(e.w===r.b)r.winsB++;else r.draws++;
   if(e.f&LF.TITLE)r.titleFights++;if(e.t)r.tournamentMeetings++;if(e.f&LF.CLOSE)r.closeFights++;
-  if(isWorldTitle(e))r.worldTitleFights++;if(e.f&LF.TITLE||e.d==='S-TIER'||e.d==='GLOBAL D2'||e.s==='Final'||e.s==='Semifinal')r.eliteMeetings++;
+  if(isWorldTitle(e))r.worldTitleFights++;if(e.f&LF.TITLE||isTopDivision(e.d)||isSecondDivision(e.d)||e.s==='Final'||e.s==='Semifinal')r.eliteMeetings++;
   if(e.t)return;
   const victor=e.w?byFighter.get(e.w):undefined;
-  if(victor){if(e.f&LF.UPSET)victor.upsets++;if(isWorldTitle(e)||e.d==='S-TIER')victor.eliteWins++;}
+  if(victor){if(e.f&LF.UPSET)victor.upsets++;if(isWorldTitle(e)||isTopDivision(e.d))victor.eliteWins++;}
  });
  // Sustained rivalries need four meetings and at least two championship or tournament meetings.
  const rivalries=[...rivalMap.values()].filter(r=>{const both=r.winsA>0&&r.winsB>0;
@@ -50,16 +53,16 @@ export function calculateAwards(w:World,year:number):SeasonAwards{
  const detail=new Map<string,Fight>();for(const f of w.fights)if(f.year===year)detail.set(f.id,f);
  const t=w.tournaments.filter(t=>t.year===year&&t.status==='complete');
  const scores=new Map<string,number>();
- for(const e of bouts){if(!e.w)continue;const bonus=isWorldTitle(e)?20:e.f&LF.TITLE?8:e.d==='S-TIER'?7:e.d==='GLOBAL D2'?3:0;
+ for(const e of bouts){if(!e.w)continue;const bonus=isWorldTitle(e)?20:e.f&LF.TITLE?8:isTopDivision(e.d)?7:isSecondDivision(e.d)?3:0;
   scores.set(e.w,(scores.get(e.w)||0)+10+bonus+(e.f&LF.UPSET?10:0)+(isFinish(e.m)?3:0));}
  for(const event of t)if(event.winnerId)scores.set(event.winnerId,(scores.get(event.winnerId)||0)+(event.kind==='OLYMPIAD'?60:event.kind==='CRUCIBLE'?42:28));
  const sorted=[...scores.entries()].sort((a,b)=>b[1]-a[1]);
  const standout=(fn:(id:string)=>boolean)=>sorted.find(([id])=>fn(id))?.[0]||null;
- const stage=(e:LedgerEntry)=>(isWorldTitle(e)?40:e.f&LF.TITLE?14:0)+(e.d==='S-TIER'?25:e.d==='GLOBAL D2'?8:0);
+ const stage=(e:LedgerEntry)=>(isWorldTitle(e)?40:e.f&LF.TITLE?14:0)+(isTopDivision(e.d)?25:isSecondDivision(e.d)?8:0);
  const underdog=(e:LedgerEntry)=>e.w?(e.w===e.a?1-e.o:e.o):0;
  const knockout=best(bouts.filter(e=>e.m==='KO'||e.m==='TKO'),e=>stage(e)+(e.r===1?24:0)+(e.f&LF.UPSET?25:0)+(e.m==='KO'?6:0));
  const submission=best(bouts.filter(e=>e.m==='SUB'),e=>stage(e)+(e.f&LF.UPSET?20:0)+(e.r===1?15:0));
- const upset=best(bouts.filter(e=>e.f&LF.UPSET),e=>underdog(e)*65+(isWorldTitle(e)?70:e.f&LF.TITLE?20:0)+(e.d==='S-TIER'?30:0));
+ const upset=best(bouts.filter(e=>e.f&LF.UPSET),e=>underdog(e)*65+(isWorldTitle(e)?70:e.f&LF.TITLE?20:0)+(isTopDivision(e.d)?30:0));
  // Fight of the Year rewards drama: knockdowns on both sides, close cards and late finishes.
  const drama=(e:LedgerEntry)=>{const f=detail.get(e.i);const kdA=f?.statsA?.[STAT.KD]||0,kdB=f?.statsB?.[STAT.KD]||0;
   return stage(e)*.9+(e.f&LF.CLOSE?23:0)+(kdA&&kdB?30:0)+(kdA+kdB)*4+(isFinish(e.m)&&e.r>=3?14:0)+(e.f&LF.UPSET?12:0)+(f?.statsA&&f.statsB?Math.min(20,(f.statsA[STAT.SIGL]+f.statsB[STAT.SIGL])/6):0);};
@@ -72,19 +75,19 @@ function selectIconics(w:World,year:number):IconicMoment[]{
  const wins=(w.ledger[year]||[]).filter(e=>!e.t&&e.w);
  for(const e of wins.filter(e=>e.f&LF.CHANGE&&isWorldTitle(e))){
   const winner=fighters.get(e.w!)!,loser=fighters.get(e.w===e.a?e.b:e.a)!;
-  const reign=w.crown.reigns.find(r=>r.endFightId===e.i);const oldDefenses=reign?.defenses||0;
+  const reign=topReigns(w).find(r=>r.endFightId===e.i);const oldDefenses=reign?.defenses||0;
   if(oldDefenses>=4)add(e.i,'Dynasty',90+oldDefenses*5,'A dynasty falls',`${winner.name} ends ${loser.name}'s reign after ${oldDefenses} successful World Crown defenses.`,[winner.id,loser.id],e.i);
   if(ageOf(winner,year)>=37)add(`${e.i}-veteran`,'Comeback',82+ageOf(winner,year)-37,'One last crown',`${winner.name} captures the World Crown at age ${ageOf(winner,year)}, when most fighters have already left the global elite.`,[winner.id],e.i);
   if((e.o<.25&&e.w===e.a)||(e.o>.75&&e.w===e.b))add(`${e.i}-upset`,'Upset',92,'The impossible title upset',`${winner.name} shocks favorite ${loser.name} for the World Crown.`,[winner.id,loser.id],e.i);
  }
  const yearT=w.tournaments.filter(t=>t.year===year&&t.status==='complete');
  const gp=yearT.find(t=>t.kind==='CRUCIBLE'),surge=yearT.find(t=>t.kind==='SURGE'),gold=yearT.find(t=>t.kind==='OLYMPIAD');
- const champion=w.crown.reigns.filter(r=>r.startYear<=year&&(r.endYear===undefined||r.endYear>=year)).at(-1)?.fighterId;
+ const champion=topReigns(w).filter(r=>r.startYear<=year&&(r.endYear===undefined||r.endYear>=year)).at(-1)?.fighterId;
  if(gp&&gp.winnerId===champion)add('grand-slam','Double',80,'The champion conquers The Crucible',`${fighters.get(champion!)?.name} claims the World Crown and the season's Grand Prix honors.`,[champion!]);
  if(gold){const winner=fighters.get(gold.winnerId!)!;const won=gold.matches.filter(m=>m.fightId&&!m.fightId.startsWith('walkover')).filter(m=>m.winnerId===winner.id).length;
-  if(won>=5&&winner.division!=='S-TIER')add('olympiad-outsider','Olympiad',86,'The Olympiad outsider',`${winner.name}, from ${winner.division}, conquers a global knockout bracket featuring the world's elite.`,[winner.id]);}
+  if(won>=5&&!isTopDivision(winner.division))add('olympiad-outsider','Olympiad',86,'The Olympiad outsider',`${winner.name}, from ${winner.division}, conquers a global knockout bracket featuring the world's elite.`,[winner.id]);}
  if(surge?.winnerId&&surge.surgeOrder&&surge.surgeOrder.indexOf(surge.winnerId)>=0&&surge.surgeOrder.indexOf(surge.winnerId)<=2)add('surge-endurance','Surge',74,'Surviving from the opening bell',`${fighters.get(surge.winnerId)?.name} wins The Surge despite entering among its first three fighters.`,[surge.winnerId]);
- const topUpsets=wins.filter(e=>e.f&LF.UPSET&&e.d==='S-TIER'&&Math.min(e.o,1-e.o)<.15);
+ const topUpsets=wins.filter(e=>e.f&LF.UPSET&&isTopDivision(e.d)&&Math.min(e.o,1-e.o)<.15);
  for(const e of topUpsets){const win=fighters.get(e.w!)!;add(`upset-${e.i}`,'Upset',65+(isWorldTitle(e)?20:0)+Math.round((.15-Math.min(e.o,1-e.o))*50),'A shock felt across NEXUS',`${win.name} defeats a heavily favored elite contender by ${e.m} at ${eventNameOf(e)}.`,[win.id,e.w===e.a?e.b:e.a],e.i);}
  // Only historically significant stories survive. Never create filler moments.
  const seen=new Set<string>();return candidate.filter(c=>{const k=`${c.category}-${c.subjectIds[0]}`;if(seen.has(k))return false;seen.add(k);return true;}).sort((a,b)=>b.score-a.score).slice(0,4);
@@ -141,15 +144,15 @@ export function periodLeaderboards(w:World,from:number,to:number):FighterLegacy[
   if(e.m==='KO'||e.m==='TKO')win.kos++;if(e.m==='SUB')win.subs++;
   if(isWorldTitle(e)&&!(e.f&LF.CHANGE)&&!(e.f&LF.INTERIM))win.defenses++;
   if(e.f&LF.UPSET)win.upsets++;
-  if(isWorldTitle(e)||e.d==='S-TIER')win.eliteWins++;
+  if(isWorldTitle(e)||isTopDivision(e.d))win.eliteWins++;
  }
  for(const t of w.tournaments){if(t.year<from||t.year>to||t.status!=='complete'||!t.winnerId)continue;
   const entry=grouped.get(t.winnerId);if(!entry)continue;
   if(t.kind==='CRUCIBLE')entry.crucibles++;if(t.kind==='SURGE')entry.surges++;if(t.kind==='OLYMPIAD')entry.golds++;
  }
  for(const belt of CONTINENTAL_BELTS)for(const r of w.belts[belt].reigns){const x=grouped.get(r.fighterId);if(x&&r.startYear>=from&&r.startYear<=to)x.beltReigns++;}
- for(const r of w.crown.reigns){const x=grouped.get(r.fighterId);if(!x)continue;
-  if(r.startYear>=from&&r.startYear<=to)x.reigns++;
+ for(const r of topReigns(w)){const x=grouped.get(r.fighterId);if(!x)continue;
+  if(r.startYear>=from&&r.startYear<=to&&r.via!=='split')x.reigns++;
   // Date overlap of the title tenure with the requested interval. Estimates use calendar slots.
   const a=Math.max(dateIndex(r.startYear,r.startRound),dateIndex(from,1));
   const b=Math.min(dateIndex(r.endYear??w.year,r.endRound??Math.max(1,w.round)),dateIndex(to+1,1));

@@ -1,4 +1,4 @@
-import {ARCHETYPES,MENTALITIES,SKILLS,STYLES,STYLE_OFFSETS,REGIONS,REGION_DIVISIONS,START_YEAR} from './constants';
+import {ARCHETYPES,MENTALITIES,SKILLS,STYLES,STYLE_OFFSETS,REGIONS,REGION_DIVISIONS,START_YEAR,BRANDS,TOP_DIVISION,SECOND_DIVISION,isTopDivision,isSecondDivision} from './constants';
 import {countriesIn,NAME_POOLS,type Country} from './names';
 import {Random} from './random';
 import type {Fighter,Rarity,Archetype,Region,Style,Division,Skill,ProfileAppearance,World} from './types';
@@ -32,8 +32,8 @@ export const PEAK_RANGES:Record<Rarity,[number,number]>={Generational:[94,96],Le
 export const RARITY_TARGETS={Generational:[2,3],Legend:[8,10],Epic:[15,20]} as const;
 function profile(rng:Random):ProfileAppearance {return {skin:rng.int(0,7),hair:rng.int(0,6),hairStyle:rng.int(0,9),facialHair:rng.int(0,5),face:rng.int(0,5),expression:rng.int(0,3),accessory:rng.int(0,8),scar:rng.next()<0.13};}
 function planAge(rng:Random,division:Division):number {
-  if(division==='S-TIER')return rng.int(26,36);
-  if(division==='GLOBAL D2')return rng.int(23,38);
+  if(isTopDivision(division))return rng.int(26,36);
+  if(isSecondDivision(division))return rng.int(23,38);
   if(division.endsWith('D1'))return rng.int(22,38);
   return rng.int(18,39);
 }
@@ -82,7 +82,7 @@ export function createFighter(rng:Random,id:number,region:Region,division:Divisi
   const curve=curveFor(rng,rarity,archetype);
   const peakAge=18+curve.indexOf(Math.max(...curve));
   let age=opts.rookie?rng.int(18,21):planAge(rng,division);
-  const mode=opts.age??(division==='S-TIER'?'prime':undefined);
+  const mode=opts.age??(isTopDivision(division)?'prime':undefined);
   if(Array.isArray(mode))age=rng.int(mode[0],mode[1]);
   else if(mode==='declining')age=clamp(peakAge+rng.int(4,6),30,37);
   else if(mode==='prime'){
@@ -90,7 +90,7 @@ export function createFighter(rng:Random,id:number,region:Region,division:Divisi
     const ages=Array.from({length:13},(_,i)=>i+24).filter(a=>curve[a-18]>=Math.max(...curve)-3);
     age=ages.length?rng.pick(ages):Array.from({length:13},(_,i)=>i+24).sort((a,b)=>curve[b-18]-curve[a-18])[0];
   }
-  if(division==='S-TIER')age=Math.max(24,age);
+  if(isTopDivision(division))age=Math.max(24,age);
   const offsets=[...STYLE_OFFSETS[style]];const mean=offsets.reduce((a,b)=>a+b,0)/9;
   const noise=SKILLS.map(()=>rng.int(-3,3));const noiseMean=noise.reduce((a,b)=>a+b,0)/9;
   let weight=Math.round(style==='Sumo'?rng.float(125,185):style.includes('Wrestling')||style==='Sambo'?rng.float(82,112):rng.float(65,102));
@@ -103,28 +103,34 @@ export function rankDivision(world:World,division:Division):Fighter[]{return wor
 export function regionRoster(world:World,region:Region):Fighter[]{return world.fighters.filter(f=>f.status==='active'&&f.region===region);}
 
 /* ───────────── Founding universe ─────────────
-   S-Tier: two generational fighters, five legends, eleven epics and two rares at their peak.
-   Global D2: a declining legend, a young legend, four epics, twelve rares and two peak uncommons.
+   The two brands' S divisions (28 places): two generational fighters, six legends, twelve epics and eight rares at their peak.
+   Their II divisions (28): a declining legend, a young legend, three epics, fourteen rares and nine uncommons.
+   Each rarity group is dealt alternately to NOVA and ONYX so the brands start even.
    Continental divisions: a rising generational talent, two young legends, a few young epics, the rest rare and below.
    The three generational fighters come from three different regions; every region has at least two legends. */
 export interface FoundingSlot {division:Division;region:Region;rarity:Rarity;age?:AgeMode;}
 export function foundingPlan(rng:Random):FoundingSlot[]{
   const order=rng.shuffle([...REGIONS]);
-  const slots:FoundingSlot[]=[];
-  const global=(division:Division,rarity:Rarity,region:Region,age?:AgeMode)=>slots.push({division,region,rarity,age});
-  // Generational: two in S-Tier, one rising in a third region's Division I.
-  global('S-TIER','Generational',order[0],'prime');global('S-TIER','Generational',order[1],'prime');
-  const legendRegions=[order[2],order[3],order[0],order[1],order[2],order[3],order[0],order[1],order[2]];
-  for(let i=0;i<5;i++)global('S-TIER','Legend',legendRegions[i],'prime');
-  global('GLOBAL D2','Legend',legendRegions[5],'declining');global('GLOBAL D2','Legend',legendRegions[6],[21,23]);
-  const d1Special:FoundingSlot[]=[{division:regionDivision(order[2],1),region:order[2],rarity:'Generational',age:[19,20]},
-   {division:regionDivision(legendRegions[7],1),region:legendRegions[7],rarity:'Legend',age:[19,22]},{division:regionDivision(legendRegions[8],1),region:legendRegions[8],rarity:'Legend',age:[19,22]}];
+  const top:Omit<FoundingSlot,'division'>[]=[],second:Omit<FoundingSlot,'division'>[]=[];
+  const add=(list:Omit<FoundingSlot,'division'>[],rarity:Rarity,region:Region,age?:AgeMode)=>list.push({region,rarity,age});
+  add(top,'Generational',order[0],'prime');add(top,'Generational',order[1],'prime');
+  const legendRegions=[order[2],order[3],order[0],order[1],order[2],order[3],order[0],order[1],order[2],order[3]];
+  for(let i=0;i<6;i++)add(top,'Legend',legendRegions[i],'prime');
+  add(second,'Legend',legendRegions[6],'declining');add(second,'Legend',legendRegions[7],[21,23]);
   const cycle=(i:number)=>REGIONS[i%4];
-  for(let i=0;i<11;i++)global('S-TIER','Epic',cycle(i),'prime');
-  for(let i=0;i<2;i++)global('S-TIER','Rare',cycle(i+3),'prime');
-  for(let i=0;i<4;i++)global('GLOBAL D2','Epic',cycle(i+1),i<2?[21,24]:undefined);
-  for(let i=0;i<12;i++)global('GLOBAL D2','Rare',cycle(i+2));
-  for(let i=0;i<2;i++)global('GLOBAL D2','Uncommon',cycle(i),'prime');
+  for(let i=0;i<12;i++)add(top,'Epic',cycle(i),'prime');
+  for(let i=0;i<8;i++)add(top,'Rare',cycle(i+3),'prime');
+  for(let i=0;i<3;i++)add(second,'Epic',cycle(i+1),i<2?[21,24]:undefined);
+  for(let i=0;i<14;i++)add(second,'Rare',cycle(i+2));
+  for(let i=0;i<9;i++)add(second,'Uncommon',cycle(i),i<3?'prime':undefined);
+  // Deal each list alternately: same rarity mix on both brands, a coin flip deciding who picks first.
+  const deal=(list:Omit<FoundingSlot,'division'>[],tier:'top'|'second'):FoundingSlot[]=>{
+    const first=rng.next()<.5?0:1;
+    return list.map((x,i)=>({...x,division:(tier==='top'?TOP_DIVISION:SECOND_DIVISION)[BRANDS[(i+first)%2]]}));
+  };
+  const slots=[...deal(top,'top'),...deal(second,'second')];
+  const d1Special:FoundingSlot[]=[{division:regionDivision(order[2],1),region:order[2],rarity:'Generational',age:[19,20]},
+   {division:regionDivision(legendRegions[8],1),region:legendRegions[8],rarity:'Legend',age:[19,22]},{division:regionDivision(legendRegions[9],1),region:legendRegions[9],rarity:'Legend',age:[19,22]}];
   // Continental divisions: specials first, then a shuffled bag dealt so each division has exactly twenty.
   const epicD1=rng.shuffle([...REGIONS]).slice(0,2),epicD2=rng.pick(REGIONS);
   const regional:FoundingSlot[]=[...d1Special,...epicD1.map(r=>({division:regionDivision(r,1),region:r,rarity:'Epic' as Rarity,age:[19,22] as AgeMode})),{division:regionDivision(epicD2,2),region:epicD2,rarity:'Epic',age:[18,19]}];
@@ -150,8 +156,14 @@ export function planRookieRarities(w:World,rng:Random,slots:Region[]):Rarity[]{
   };
   const gens=count('Generational');
   const genRegions=new Set(active.filter(f=>f.rarity==='Generational').map(f=>f.region));
-  const genSpawns=gens===0?1+(rng.next()<.5?1:0):gens===1?(rng.next()<.9?1:0):gens===2?(rng.next()<.14?1:0):0;
-  for(let i=0;i<genSpawns;i++){const placed=place('Generational',rng.shuffle(REGIONS.filter(r=>!genRegions.has(r))));if(placed)genRegions.add(placed);}
+  // Below two generational talents the gap is filled at once; at two, a 25% chance of a third,
+  // so two generationals rarely arrive in the same class. They go to regions without one, the fewer legends the better.
+  const genSpawns=gens<2?2-gens:gens===2?(rng.next()<.25?1:0):0;
+  const legendsIn=(r:Region)=>active.filter(f=>f.rarity==='Legend'&&f.region===r).length;
+  for(let i=0;i<genSpawns;i++){
+    const open=REGIONS.filter(r=>!genRegions.has(r)).map(r=>({r,k:legendsIn(r)+rng.next()*.9})).sort((a,b)=>a.k-b.k).map(x=>x.r);
+    const placed=place('Generational',open);if(placed)genRegions.add(placed);
+  }
   const legends=count('Legend');
   const legendSpawns=legends<6?2:legends<8?1+(rng.next()<.4?1:0):legends<10?(rng.next()<.3?1:0):0;
   for(let i=0;i<legendSpawns;i++){

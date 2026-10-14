@@ -1,5 +1,8 @@
 export type Region = 'Americas' | 'Europe & Middle East' | 'Africa' | 'APAC';
-export type Division = 'S-TIER' | 'GLOBAL D2' | 'AMERICAS D1' | 'AMERICAS D2' | 'EUROPE D1' | 'EUROPE D2' | 'AFRICA D1' | 'AFRICA D2' | 'APAC D1' | 'APAC D2';
+/** The two world-tier brands. Each runs its own S and II divisions and its own world title. */
+export type Brand = 'NOVA' | 'ONYX';
+/** 'S-TIER' and 'GLOBAL D2' are the single-brand divisions of saves from before the brand split; they survive only in history. */
+export type Division = 'NOVA S' | 'NOVA II' | 'ONYX S' | 'ONYX II' | 'S-TIER' | 'GLOBAL D2' | 'AMERICAS D1' | 'AMERICAS D2' | 'EUROPE D1' | 'EUROPE D2' | 'AFRICA D1' | 'AFRICA D2' | 'APAC D1' | 'APAC D2';
 export type Skill = 'Hands' | 'Kicks' | 'Clinch' | 'Takedowns' | 'Submissions' | 'Ground Control' | 'Defense' | 'Stamina' | 'Footwork';
 export type Style = 'Boxing' | 'Kickboxing' | 'Muay Thai' | 'Karate' | 'Taekwondo' | 'Freestyle Wrestling' | 'Greco-Roman Wrestling' | 'Judo' | 'Brazilian Jiu-Jitsu' | 'Sambo' | 'Sumo' | 'MMA Hybrid';
 export type Mentality = 'Strategist' | 'Bold' | 'Crazy' | 'Cold';
@@ -18,13 +21,17 @@ export interface CareerStats {fights:number;seconds:number;s:StatLine;kdTaken:nu
 
 export interface Fighter {fame:number;id:string;name:string;nickname:string;country:string;flag:string;region:Region;birthYear:number;height:number;weight:number;reach:number;style:Style;mentality:Mentality;archetype:Archetype;rarity:Rarity;appearance:ProfileAppearance;potential:number;curve:number[];skillOffsets:number[];skillNoise:number[];shape:number;condition:number;division:Division;rank:number;status:'active'|'retired';joinedYear:number;retiredYear?:number;history:CareerSnapshot[];rankingPoints:number;record:FightRecord;injuryUntil:number;injuryName?:string;injurySeverity?:'minor'|'moderate'|'major';career?:CareerStats;}
 /** The World Crown plus one Continental belt per region. */
-export type BeltId='WORLD'|'AMERICAS'|'EUROPE'|'AFRICA'|'APAC';
+/** NOVA and ONYX: the brand world titles. WORLD: the single World Crown from before the brand split (history only). */
+export type BeltId='NOVA'|'ONYX'|'WORLD'|'AMERICAS'|'EUROPE'|'AFRICA'|'APAC';
 /** title: regular or vacant title bout · interim: champion unavailable · unification: champion vs interim · eliminator: winner becomes mandatory challenger. */
-export type BoutKind='title'|'interim'|'unification'|'eliminator';
+/** pinnacle: the year's NOVA v ONYX unifier · contract: the Pinnacle bout for a guaranteed title shot. */
+export type BoutKind='title'|'interim'|'unification'|'eliminator'|'pinnacle'|'contract';
 export interface PendingFight {fighterA:string;fighterB:string;year:number;roundIndex:number;division:Division;titleFight:boolean;eventName:string;belt?:BeltId;kind?:BoutKind;
+ /** Doubles leg: tie id, leg number and the two countries. */tag?:{tie:string;leg:1|2;a:string;b:string;title:boolean};
+ /** Continental Supremacy round-robin bout at The Pinnacle. */supremacy?:boolean;
  /** World-tier bouts beyond the main card: resolved with the event, shown as prelim results. */prelim?:boolean;}
 export interface CrownReign {fighterId:string;startYear:number;startRound:number;startFightId:string;endYear?:number;endRound?:number;endFightId?:string;defenses:number;
- /** Set when an interim champion was elevated after the champion left. */via?:'interim';}
+ /** interim: elevated after the champion left · split: carried over from the World Crown when the brands split. */via?:'interim'|'split';}
 export interface CrownState {championId:string|null;reigns:CrownReign[];
  /** Interim champion while the champion is unavailable, and that lineage. */
  interimId?:string|null;interimReigns?:CrownReign[];
@@ -69,6 +76,18 @@ export interface World {version:'0.9.0';
  ledger:Record<number,LedgerEntry[]>;
  /** Title fights, tournament knockouts and award/iconic bouts kept in detail (no minute data) after their season closes. */
  keyFights:Record<number,Fight[]>;
+ /** Brand world titles. `crown` keeps the single World Crown lineage from before the split. */
+ crowns?:Record<Brand,CrownState>;
+ /** Guaranteed shot at the next title night of the holder's brand (won at The Pinnacle). */
+ titleShot?:{fighterId:string;brand:Brand;year:number}|null;
+ pinnacle?:PinnacleHonor[];supremacy?:SupremacyHonor[];tag?:TagState;
+ /** Big-event bookings made at the start of the month. */
+ marquees?:{year:number;month:number;list:{brand?:Brand;a:string;b:string;kind:BoutKind}[]}|null;
+ /** Year the brands split (saves migrated from a single top tier). */
+ splitYear?:number;
+ /** Player acts as brand manager: the season stops at the offseason Draft Room. */manager?:boolean;
+ /** Open Draft Room (promotions, relegations, signings) waiting for the player. */draft?:DraftState|null;
+ /** Moves of the last completed Draft Room, for the offseason report. */lastDraft?:{year:number;moves:{id:string;from:Division;to:Division}[];retired:string[];declined:string[]}|null;
  lastFightIds:string[];pendingFight:PendingFight|null;
  /** The prepared world-tier card (S-Tier and Global D2), main event first. Unplayed until the event starts. */
  pendingCard?:PendingFight[]|null;
@@ -82,5 +101,22 @@ export interface World {version:'0.9.0';
  beltReservations?:{year:number;month:number;pairs:Partial<Record<BeltId,[string,string]>>}|null;
  /** The player's own state: followed fighters and main-event picks. Never read by the simulation. */
  user?:UserState;}
+/** Country doubles: two fighters per nation, best two of each country. The title belongs to the country. */
+/** One offseason move made in the Draft Room. Applied to the roster at once; undone from `from`. */
+export interface DraftMove {id:string;from:Division;to:Division;points:number;}
+export interface DraftState {
+ /** The season about to begin. */year:number;
+ /** Fighters who retired this offseason. */retired:string[];
+ /** Continental fighters who want to sign with a brand (ambition rolled once). */applicants:string[];
+ /** Continental fighters invited who declined (veterans, champions defending at home). */declined:string[];
+ moves:DraftMove[];
+}
+export interface TagReign {country:string;startYear:number;startRound:number;endYear?:number;endRound?:number;defenses:number;fighters:string[];startTie:string;}
+export interface TagTie {id:string;year:number;round:number;a:string;b:string;title:boolean;legs:{fightId:string;a:string;b:string;w:string|null}[];winner:string|null;}
+export interface TagState {ratings:Record<string,number>;champion:string|null;reigns:TagReign[];ties:TagTie[];}
+/** The Pinnacle unifier: NOVA champion v ONYX champion. The winner takes the year. */
+export interface PinnacleHonor {year:number;winnerId:string;loserId:string;fightId:string;winnerBrand?:Brand;}
+/** Continental Supremacy: the four continental champions, all against all, at The Pinnacle. */
+export interface SupremacyHonor {year:number;winnerId:string|null;table:{id:string;pts:number;w:number;l:number;d:number}[];}
 export interface PickRecord {fightId:string;pick:string;correct:boolean|null;odds:number;year:number;}
 export interface UserState {followed:string[];picks:PickRecord[];pendingPick?:{key:string;pick:string}|null;}

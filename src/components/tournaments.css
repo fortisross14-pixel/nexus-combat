@@ -55,3 +55,29 @@
 .tr-gold{color:#f2d68d;flex:none}
 @media(max-width:980px){.tr-shell{grid-template-columns:1fr}.tr-vtabs{position:static;grid-template-columns:repeat(3,minmax(0,1fr))}.tr-vtabs button .lucide-chevron-right{display:none}}
 @media(max-width:640px){.tr-vtabs{grid-template-columns:1fr}.tr-history-head,.tr-history-row{grid-template-columns:52px 1fr 1fr}}
+/* Doubles */
+.tg-overview{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.tg-champ h3{display:flex;align-items:center;gap:10px;font-size:28px;margin:6px 0}
+.tg-champ p{color:var(--dim)}
+.tg-team{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap}
+.tg-team button{display:flex;flex-direction:column;align-items:center;gap:4px;background:#ffffff08;border:1px solid var(--stroke);border-radius:12px;padding:12px;color:inherit;min-width:130px}
+.tg-team small{color:var(--dim);font-size:11.5px}
+.tg-note{margin-top:12px;font-size:12.5px}
+.tg-rank-list{display:flex;flex-direction:column}
+.tg-rank{display:grid;grid-template-columns:28px minmax(0,1.2fr) minmax(0,1fr) 48px;gap:8px;align-items:center;padding:6px 2px;border-bottom:1px solid #ffffff0d;font-size:13px}
+.tg-rank.champ{color:var(--gold)}
+.tg-pos{font-family:ui-monospace,monospace;color:var(--mute)}
+.tg-pair{color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.tg-rank b{text-align:right}
+.tg-nation{display:inline-flex;align-items:center;gap:6px}
+.tg-annual{display:flex;flex-direction:column;gap:10px}
+.tg-annual .cal-year{align-self:flex-start}
+.tg-tie.title{border-color:#edbc6f66}
+.tg-tie-head{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.08em;color:var(--dim)}
+.tg-tie-head b{color:var(--text);display:flex;gap:6px;align-items:center;letter-spacing:0;font-size:13px}
+.tg-tie-teams{display:flex;gap:10px;align-items:center;font-size:16px;font-weight:600;margin:8px 0}
+.tg-tie-teams i{color:var(--mute);font-style:normal}
+.tg-leg{display:grid;grid-template-columns:26px 1fr 24px 1fr;gap:6px;width:100%;background:none;border:0;border-top:1px solid #ffffff0d;color:inherit;padding:6px 0;text-align:left}
+.tg-leg .won{color:var(--teal);font-weight:600}.tg-leg .lost{color:var(--dim)}
+.tg-leg i{color:var(--mute);font-style:normal}
+@media(max-width:900px){.tg-overview{grid-template-columns:1fr}}

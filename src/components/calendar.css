@@ -61,3 +61,8 @@
 .cal-key.past{opacity:.5}
 @media(max-width:1000px){.cal-layout{grid-template-columns:1fr}.cal-side{position:static}.cal-months{grid-template-columns:repeat(6,1fr)}}
 @media(max-width:640px){.cal-event-head{flex-wrap:wrap}.cal-status{min-width:0}.cal-bout{grid-template-columns:1fr 1fr;}.cal-bout i{display:none}.v13-head{flex-direction:column;align-items:flex-start}}
+.cal-stake.world[style]{color:var(--brand);border-color:color-mix(in srgb,var(--brand) 45%,transparent)}
+.cal-stake.pinnacle{color:#fff;background:linear-gradient(90deg,#4fd1ff33,#ff7a4533)}
+.cal-stake.doubles{color:#ff8a8a}
+.cal-key em.pinnacle{color:#ffd27a}.cal-key em.doubles{color:#ff8a8a}
+.cal-booked-row{display:flex;flex-direction:column;gap:2px;margin-top:6px}

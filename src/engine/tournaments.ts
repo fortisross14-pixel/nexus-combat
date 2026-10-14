@@ -1,5 +1,6 @@
 import {abilitiesOf,ageOf,clamp,overallOf} from './career';
 import {Random} from './random';
+import {TOP_DIVISION,SECOND_DIVISION} from './constants';
 import {resolveTournamentBout,CLOCK,SURGE_ROUND,OLYMPIAD_ROUND,CRUCIBLE_ROUND} from './competition';
 import {FORM_MAX,pinChampionForm} from './belts';
 import type {Fighter,World,Tournament,TournamentKind,TournamentMatch} from './types';
@@ -7,6 +8,7 @@ import type {Fighter,World,Tournament,TournamentKind,TournamentMatch} from './ty
 export const isOlympiadYear=(year:number)=>year%4===0;
 export function kindAt(year:number,round:number):TournamentKind|null{
  if(round===SURGE_ROUND)return 'SURGE';
+ // August: the Olympiad every fourth year, the Crucible otherwise.
  if(round===OLYMPIAD_ROUND&&isOlympiadYear(year))return 'OLYMPIAD';
  return round===CRUCIBLE_ROUND?'CRUCIBLE':null;
 }
@@ -14,7 +16,12 @@ export const eventNameAt=(year:number,round:number)=>kindAt(year,round)==='OLYMP
 export function nextTournamentKind(w:World):TournamentKind|null{return kindAt(w.year,w.round);}
 const match=(t:Tournament,stage:string,a:string,b:string,group?:'A'|'B'):TournamentMatch=>({id:`${t.id}-m${t.matches.length+1}`,stage,fighterA:a,fighterB:b,winnerId:null,...(group?{group}:{})});
 const eligible=(f:Fighter)=>f.status==='active'&&f.condition>=60;
-const ranked=(w:World,division:'S-TIER'|'GLOBAL D2')=>w.fighters.filter(f=>f.division===division&&f.status==='active').sort((a,b)=>a.rank-b.rank);
+/** Both brands' top (or second) divisions, interleaved by rank: NOVA #1, ONYX #1, NOVA #2… champions first. */
+const ranked=(w:World,tier:'top'|'second')=>{
+ const lists=(['NOVA','ONYX'] as const).map(b=>w.fighters.filter(f=>f.status==='active'&&f.division===(tier==='top'?TOP_DIVISION[b]:SECOND_DIVISION[b])).sort((a,c)=>a.rank-c.rank));
+ const out:Fighter[]=[];for(let i=0;i<Math.max(...lists.map(l=>l.length));i++)for(const l of lists)if(l[i])out.push(l[i]);
+ return out;
+};
 function makeMatches(t:Tournament,stage:string,pairs:[string,string][],group?:'A'|'B'){
  for(const [a,b] of pairs)t.matches.push(match(t,stage,a,b,group));
 }
@@ -35,18 +42,18 @@ export function beginTournament(w:World,rng:Random):Tournament{
  }
  let participants:string[];
  if(kind==='CRUCIBLE'){
-  participants=[...ranked(w,'S-TIER'),...ranked(w,'GLOBAL D2')].filter(f=>eligible(f)&&f.injuryUntil<=now).slice(0,8).map(f=>f.id);
+  participants=[...ranked(w,'top'),...ranked(w,'second')].filter(f=>eligible(f)&&f.injuryUntil<=now).slice(0,8).map(f=>f.id);
   if(participants.length<8)throw Error('Not enough medically cleared Grand Prix entrants');
  }else if(kind==='OLYMPIAD'){
   // Forty medically cleared athletes: the global divisions first, then the best continental fighters as alternates.
   const cleared=(f:Fighter)=>eligible(f)&&f.injuryUntil<=now;
   const alternates=w.fighters.filter(f=>f.status==='active'&&f.division.endsWith('D1')).sort((a,b)=>b.rankingPoints-a.rankingPoints);
-  participants=[...ranked(w,'S-TIER'),...ranked(w,'GLOBAL D2'),...alternates].filter(cleared).slice(0,40).map(f=>f.id);
+  participants=[...ranked(w,'top'),...ranked(w,'second'),...alternates].filter(cleared).slice(0,40).map(f=>f.id);
   if(participants.length<40)throw Error('Not enough medically cleared Olympiad entrants');
  }else{
   // The twenty Royale berths include eligible S-Tier fighters and fit Global D2 reserves
   // if a contender is medically suspended; never force an injured athlete into the arena.
-  participants=[...ranked(w,'S-TIER'),...ranked(w,'GLOBAL D2'),...w.fighters.filter(f=>f.status==='active'&&f.division.endsWith('D1')).sort((a,b)=>b.rankingPoints-a.rankingPoints)].filter(f=>eligible(f)&&f.injuryUntil<=now).slice(0,20).map(f=>f.id);
+  participants=[...ranked(w,'top'),...ranked(w,'second'),...w.fighters.filter(f=>f.status==='active'&&f.division.endsWith('D1')).sort((a,b)=>b.rankingPoints-a.rankingPoints)].filter(f=>eligible(f)&&f.injuryUntil<=now).slice(0,20).map(f=>f.id);
   if(participants.length<20)throw Error('Not enough medically cleared Royale entrants');
  }
  const t:Tournament={id:`${kind.toLowerCase()}-${w.year}`,kind,year:w.year,status:'active',participants,matches:[],stage:0,winnerId:null};

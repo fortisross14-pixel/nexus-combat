@@ -42,3 +42,6 @@
 .dv-record strong{font-family:'Barlow Condensed',sans-serif;font-size:16px;white-space:nowrap}
 @media(max-width:1200px){.dv-contenders{grid-template-columns:repeat(2,minmax(0,1fr))}.dv-records{grid-template-columns:1fr}}
 @media(max-width:640px){.dv-champ>button{flex-direction:column;align-items:flex-start}.dv-contenders{grid-template-columns:1fr 1fr}}
+.brand-section{border-left:2px solid var(--brand);padding-left:8px;margin-bottom:12px}
+.brand-eyebrow{color:var(--brand)!important;display:flex;flex-direction:column;gap:2px}
+.brand-eyebrow small{color:var(--mute);letter-spacing:.02em;text-transform:none;font-weight:400}

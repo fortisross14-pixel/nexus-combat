@@ -4,26 +4,35 @@ import {Avatar} from './Avatar';
 import {Flag} from './Flag';
 import {BeltChips,RankTag,Heading} from './ui';
 import {CALENDAR,ROUNDS_PER_YEAR,isBigEvent} from '../engine/competition';
+import {BRAND_INFO,brandOf,divisionLabel,isTopDivision,isWorldTier} from '../engine/constants';
 import {overallOf} from '../engine/career';
 import {getFight} from '../engine/archive';
 import {forecastBout,headToHead} from '../engine/forecast';
-import {BELT_SHORT,isContinentalRound,isWorldTitleRound} from '../engine/belts';
+import {BELT_SHORT,isContinentalRound,titleBrandAt,otherBrand,DOUBLES_ROUND} from '../engine/belts';
 import {eventNameAt,kindAt} from '../engine/tournaments';
 import {pickKey,pickStats,userOf} from '../engine/user';
 import {EventLogo,EventWordmark,identityFor,identityStyle} from './EventIdentity';
 import type {Fight,Fighter,PendingFight,World} from '../engine/types';
 import './event-night.css';
 
-const WORLD_TIER=new Set(['S-TIER','GLOBAL D2']);
-const divisionName=(d:string)=>d==='S-TIER'?'S Division':d==='GLOBAL D2'?'Division II':d;
+const divisionName=(d:string)=>divisionLabel(d);
+/** Brand badge (NOVA / ONYX) for a division. */
+export function BrandTag({division}:{division:string}){
+ const b=brandOf(division);if(!b)return null;
+ return <span className="brand-tag" style={{'--brand':BRAND_INFO[b].color} as React.CSSProperties}>{b}</span>;
+}
 
 /** What makes a bout worth watching: history between them, streaks, ranks. */
-export function boutTags(world:World,a:Fighter,b:Fighter,p?:Pick<PendingFight,'kind'|'titleFight'|'division'>):{text:string;hot?:boolean}[]{
+export function boutTags(world:World,a:Fighter,b:Fighter,p?:Pick<PendingFight,'kind'|'titleFight'|'division'|'tag'|'supremacy'>):{text:string;hot?:boolean}[]{
  const tags:{text:string;hot?:boolean}[]=[];
- if(p?.kind==='unification')tags.push({text:'Unification',hot:true});
+ if(p?.kind==='pinnacle')tags.push({text:'The winner takes the year',hot:true});
+ else if(p?.kind==='contract')tags.push({text:'Winner gets a guaranteed title shot',hot:true});
+ else if(p?.kind==='unification')tags.push({text:'Unification',hot:true});
  else if(p?.kind==='interim')tags.push({text:'Interim title',hot:true});
  else if(p?.titleFight)tags.push({text:'Title fight',hot:true});
  else if(p?.kind==='eliminator')tags.push({text:'Title eliminator · winner gets the next shot',hot:true});
+ if(p?.tag)tags.push({text:p.tag.title?`Doubles Crown · ${p.tag.a} v ${p.tag.b}`:`Doubles ranking · ${p.tag.a} v ${p.tag.b}`,hot:p.tag.title});
+ if(world.titleShot&&(world.titleShot.fighterId===a.id||world.titleShot.fighterId===b.id)&&!p?.titleFight)tags.push({text:`${(world.titleShot.fighterId===a.id?a:b).name.split(' ').at(-1)} holds a guaranteed title shot`});
  const h2h=headToHead(world,a.id,b.id).filter(e=>!e.t);
  if(h2h.length){
   const wa=h2h.filter(e=>e.w===a.id).length,wb=h2h.filter(e=>e.w===b.id).length;
@@ -32,13 +41,13 @@ export function boutTags(world:World,a:Fighter,b:Fighter,p?:Pick<PendingFight,'k
  }
  for(const f of [a,b])if(f.record.streak>=3)tags.push({text:`${f.name.split(' ').at(-1)} on a ${f.record.streak}-fight win streak`});
  for(const f of [a,b])if(f.record.streak<=-3)tags.push({text:`${f.name.split(' ').at(-1)} has lost ${-f.record.streak} straight`});
- if(p?.division==='S-TIER'&&a.rank>0&&b.rank>0&&a.rank<=5&&b.rank<=5&&!p.titleFight)tags.push({text:'Top-5 clash'});
+ if(p&&isTopDivision(p.division)&&!p.tag&&!p.supremacy&&a.rank>0&&b.rank>0&&a.rank<=5&&b.rank<=5&&!p.titleFight)tags.push({text:'Top-5 clash'});
  return tags;
 }
 function Corner({f,world,side,onFighter}:{f:Fighter;world:World;side:'a'|'b';onFighter:(id:string)=>void}){
  return <button className={`card-corner corner-${side}`} onClick={()=>onFighter(f.id)}>
   <Avatar fighter={f} size={74}/>
-  <span className="cc-text"><span className="cc-rank"><RankTag rank={f.rank}/><small>{divisionName(f.division)}</small></span><b>{f.name}</b><small><Flag code={f.flag}/>{f.country} · {f.style}</small><small className="cc-record">{f.record.wins}-{f.record.losses}-{f.record.draws} · OVR {overallOf(f,world.year)}</small><span className="cc-belts"><BeltChips world={world} id={f.id}/></span></span>
+  <span className="cc-text"><span className="cc-rank"><BrandTag division={f.division}/><RankTag rank={f.rank}/><small>{brandOf(f.division)?(isTopDivision(f.division)?'S':'II'):divisionName(f.division)}</small></span><b>{f.name}</b><small><Flag code={f.flag}/>{f.country} · {f.style}</small><small className="cc-record">{f.record.wins}-{f.record.losses}-{f.record.draws} · OVR {overallOf(f,world.year)}</small><span className="cc-belts"><BeltChips world={world} id={f.id}/></span></span>
  </button>;
 }
 function ChanceBar({a,b,chance}:{a:Fighter;b:Fighter;chance:number}){
@@ -46,14 +55,18 @@ function ChanceBar({a,b,chance}:{a:Fighter;b:Fighter;chance:number}){
  return <div className="chance"><div className="chance-nums"><b>{pa}%</b><small>WIN CHANCE</small><b>{100-pa}%</b></div><div className="chance-bar" aria-label={`${a.name} ${pa}%, ${b.name} ${100-pa}%`}><i style={{width:`${pa}%`}}/></div></div>;
 }
 function headerFor(p:PendingFight,i:number){
- if(i===0){
-  if(p.kind==='unification')return 'MAIN EVENT · WORLD CROWN UNIFICATION · 5 ROUNDS';
-  if(p.kind==='interim')return 'MAIN EVENT · INTERIM WORLD CROWN · 5 ROUNDS';
-  if(p.titleFight)return 'MAIN EVENT · WORLD CROWN · 5 ROUNDS';
-  if(p.kind==='eliminator')return 'MAIN EVENT · TITLE ELIMINATOR · 3 ROUNDS';
-  return 'MAIN EVENT · 3 ROUNDS';
- }
- return `${i===1?'CO-MAIN EVENT':`BOUT ${i+1}`} · ${divisionName(p.division).toUpperCase()} · 3 ROUNDS`;
+ const slot=i===0?'MAIN EVENT':i===1?'CO-MAIN EVENT':`BOUT ${i+1}`;
+ const brand=p.belt??brandOf(p.division)??'';
+ const what=p.kind==='pinnacle'?'THE PINNACLE UNIFIER · NOVA v ONYX · 5 ROUNDS':
+  p.kind==='contract'?'TITLE-SHOT CONTRACT · NOVA v ONYX · 3 ROUNDS':
+  p.kind==='unification'?`${brand} WORLD TITLE UNIFICATION · 5 ROUNDS`:
+  p.kind==='interim'?`INTERIM ${brand} WORLD TITLE · 5 ROUNDS`:
+  p.titleFight?`${brand} WORLD TITLE · 5 ROUNDS`:
+  p.kind==='eliminator'?`${brand} TITLE ELIMINATOR · 3 ROUNDS`:
+  p.tag?`DOUBLES${p.tag.title?' CROWN':' RANKING'} · ${p.tag.a.toUpperCase()} v ${p.tag.b.toUpperCase()} · LEG ${p.tag.leg}`:
+  p.supremacy?'CONTINENTAL SUPREMACY · ALL AGAINST ALL · 3 ROUNDS':
+  `${divisionName(p.division).toUpperCase()} · 3 ROUNDS`;
+ return `${slot} · ${what}`;
 }
 
 /** The event screen: the world-tier card, a Skip/Simulate choice per bout, then Start event. */
@@ -67,11 +80,12 @@ export function EventNight({world,onStart,onPrepare,onTournament,onFighter,onFig
  const ident=identityFor(special||slot.name,isContinentalRound(world.round));
  const fighter=(id:string)=>world.fighters.find(f=>f.id===id)!;
  const main=card?card.filter(p=>!p.prelim):[];const prelims=card?card.filter(p=>p.prelim):[];
- const chances=useMemo(()=>main.map(p=>forecastBout(fighter(p.fighterA),fighter(p.fighterB),world.year,p.titleFight?5:3,160).winA),[key,card?.length]);// eslint-disable-line react-hooks/exhaustive-deps
+ const chances=useMemo(()=>main.map(p=>forecastBout(fighter(p.fighterA),fighter(p.fighterB),world.year,p.titleFight||p.kind==='pinnacle'?5:3,160).winA),[key,card?.length]);// eslint-disable-line react-hooks/exhaustive-deps
  const user=userOf(world);const stats=pickStats(user);const myPick=user.pendingPick?.key===pickKey(world.year,world.round)?user.pendingPick.pick:null;
  const toggle=(i:number,on:boolean)=>setWatch(old=>{const next=new Set(old);if(on)next.add(i);else next.delete(i);return next;});
- const eyebrow=slot.name==='THE PINNACLE'?'THE BIGGEST NIGHT OF THE YEAR':isWorldTitleRound(world.round)?'WORLD CROWN NIGHT':isBigEvent(world.round)?'MONTHLY BIG EVENT':`${slot.month} · WEEK ${slot.week}`;
- const hero=<section className="night-hero themed en-hero" style={identityStyle(ident)}><div className="eyebrow">{eyebrow}</div><div className="hero-brand" key={special||slot.name}><EventLogo id={ident} size={70}/><h1><EventWordmark id={ident}>{special||slot.name}</EventWordmark></h1></div><p className="ev-tagline">{ident.tagline}</p><p>{slot.month} {world.year} · Event {world.round+1} of {ROUNDS_PER_YEAR} · World tier: S Division and Division II</p></section>;
+ const tb=titleBrandAt(world.round);
+ const eyebrow=slot.name==='THE PINNACLE'?'THE BIGGEST NIGHT OF THE YEAR · NOVA v ONYX':tb?`${tb} TITLE NIGHT · ${otherBrand(tb)} TITLE ELIMINATOR`:world.round===DOUBLES_ROUND?'THE DOUBLES CROWN':isBigEvent(world.round)?'MONTHLY BIG EVENT':`${slot.month} · WEEK ${slot.week}`;
+ const hero=<section className="night-hero themed en-hero" style={identityStyle(ident)}><div className="eyebrow">{eyebrow}</div><div className="hero-brand" key={special||slot.name}><EventLogo id={ident} size={70}/><h1><EventWordmark id={ident}>{special||slot.name}</EventWordmark></h1></div><p className="ev-tagline">{ident.tagline}</p><p>{slot.month} {world.year} · Event {world.round+1} of {ROUNDS_PER_YEAR} · NOVA and ONYX</p></section>;
 
  if(!card){
   const tournamentNext=!!kindAt(world.year,world.round)||!!world.activeTournamentId;
@@ -104,10 +118,10 @@ export function EventNight({world,onStart,onPrepare,onTournament,onFighter,onFig
 /** Results of the most recent event's world-tier card. */
 export function LastEvent({world,onFight,onFighter}:{world:World;onFight:(id:string)=>void;onFighter:(id:string)=>void}){
  const ids=world.lastCardIds??world.lastFightIds;
- const fights=ids.map(id=>getFight(world,id)).filter((f):f is Fight=>!!f&&WORLD_TIER.has(f.division)&&!f.tournamentId);
+ const fights=ids.map(id=>getFight(world,id)).filter((f):f is Fight=>!!f&&isWorldTier(f.division)&&!f.tournamentId);
  if(!fights.length)return null;
  // Saved card order is main event first; older saves fall back to title fights first.
- const ordered=world.lastCardIds?fights:[...fights].sort((x,y)=>Number(!!y.titleFight||!!y.kind)-Number(!!x.titleFight||!!x.kind)||(x.division==='S-TIER'?0:1)-(y.division==='S-TIER'?0:1)||Math.min(x.rankBeforeA,x.rankBeforeB)-Math.min(y.rankBeforeA,y.rankBeforeB));
+ const ordered=world.lastCardIds?fights:[...fights].sort((x,y)=>Number(!!y.titleFight||!!y.kind)-Number(!!x.titleFight||!!x.kind)||(isTopDivision(x.division)?0:1)-(isTopDivision(y.division)?0:1)||Math.min(x.rankBeforeA,x.rankBeforeB)-Math.min(y.rankBeforeA,y.rankBeforeB));
  const name=`${fights[0].eventName||'Last event'} · ${fights[0].year}`;
  const other=world.lastCardIds?0:world.lastFightIds.length-fights.length;
  return <section className="panel en-results"><Heading eyebrow="LAST EVENT · RESULTS" title={name} end={<span className="subtle-tag">{fights.length} WORLD-TIER BOUTS{other>0?` · ${other} CONTINENTAL IN THE CALENDAR`:''}</span>}/>

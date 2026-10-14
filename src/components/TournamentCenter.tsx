@@ -1,4 +1,6 @@
 import {useMemo,useState} from 'react';
+import {doublesRanking,teamOf} from '../engine/doubles';
+import {overallOf} from '../engine/career';
 import {ArrowRight,ChevronRight,Crown,Medal,Play,SkipForward,Swords,Trophy,Zap} from 'lucide-react';
 import {Avatar} from './Avatar';
 import {Flag} from './Flag';
@@ -35,8 +37,8 @@ function Surge({world,t,onFighter}:{world:World;t:Tournament;onFighter:(id:strin
  <div className="tr-survivors"><header>ELIMINATION HISTORY</header>{(t.surgeMoments||[]).filter(m=>m.eliminatedId).slice().reverse().slice(0,12).map(m=><div className="tr-elimination" key={m.wave}><span>#{m.wave}</span><b>{fighter(world,m.eliminatedId!).name}</b><small>{m.byId?`eliminated by ${fighter(world,m.byId).name}`:'eliminated'}</small></div>)}</div></div>;
 }
 const KINDS:{kind:TournamentKind;round:number;blurb:string;when:string}[]=[
- {kind:'CRUCIBLE',round:CRUCIBLE_ROUND,blurb:'Eight fighters, two groups of four, then semifinals and a final. Two-round bouts.',when:'Every November'},
- {kind:'SURGE',round:SURGE_ROUND,blurb:'Twenty entrants, one arena. A new fighter enters each wave; the last one standing wins.',when:'Every July'},
+ {kind:'CRUCIBLE',round:CRUCIBLE_ROUND,blurb:'Eight fighters, two groups of four, then semifinals and a final. Two-round bouts.',when:'August, except Olympiad years'},
+ {kind:'SURGE',round:SURGE_ROUND,blurb:'Twenty entrants, one arena. A new fighter enters each wave; the last one standing wins.',when:'Every April · the Royal Rumble'},
  {kind:'OLYMPIAD',round:OLYMPIAD_ROUND,blurb:'Forty contenders, single elimination, from the preliminaries to the gold medal bout.',when:'Every four years, in August'},
 ];
 type Sub='Overview'|'Annual view'|'History';
@@ -49,24 +51,25 @@ function nextEdition(world:World,kind:TournamentKind){
 export function TournamentCenter({world,onStart,onWatch,onSkip,onSkipStage,onFinish,onFighter,onFight,onTape}:{world:World;onStart:()=>void;onWatch:()=>void;onSkip:()=>void;onSkipStage:()=>void;onFinish:()=>void;onFighter:(id:string)=>void;onFight:(id:string)=>void;onTape:(a:string,b:string)=>void}){
  const live=currentTournament(world);
  const dueKind=kindAt(world.year,world.round);
- const [kind,setKind]=useState<TournamentKind>(live?.kind??dueKind??'CRUCIBLE');
+ const [kind,setKind]=useState<TournamentKind|'DOUBLES'>(live?.kind??dueKind??'CRUCIBLE');
  const [sub,setSub]=useState<Sub>(live&&live.kind===kind?'Annual view':'Overview');
  const nextMatch=live?pendingTournamentMatch(live):null;
- const name=displayName(kind);const ident=identityFor(name);
+ const isTag=kind==='DOUBLES';const name=isTag?'THE DOUBLES CROWN':displayName(kind);const ident=identityFor(isTag?'COLLISION':name);
  return <div className="tr-page">
-  <PageHead tag="THE THREE PATHS TO IMMORTALITY" title="Grand" accent="Tournaments." description="The Crucible Grand Prix, the Surge Royale and the World Combat Olympiad. Each has its own champions and its own history."/>
+  <PageHead tag="THE PATHS TO IMMORTALITY" title="Grand" accent="Tournaments." description="The Crucible Grand Prix, the Surge Royal Rumble, the World Combat Olympiad and the country Doubles Crown. Each has its own champions and its own history."/>
   {live&&<section className="tr-live panel themed" style={identityStyle(identityFor(displayName(live.kind)))}><EventLogo id={identityFor(displayName(live.kind))} size={60}/><div className="tr-live-header"><span className="tr-live-label"><span className="live-dot"/> TOURNAMENT IN PROGRESS · {live.year}</span><small>{stageName(live)} · {live.kind==='SURGE'?`${live.surgeMoments?.length||0} waves`:`${live.matches.filter(m=>m.fightId).length} fights completed`}</small></div><h2>{displayName(live.kind)}</h2><p>{live.kind==='SURGE'?'Each wave reveals a new entrant or an elimination. Stamina and survival decide the winner.':'Results are revealed one bout at a time. The next round is drawn only when the current one is complete.'}</p><div className="tr-actions"><button className="btn btn-primary" onClick={onWatch}><Play size={17}/>{live.kind==='SURGE'?' Reveal next wave':' Watch next fight'}</button><button className="btn btn-secondary" onClick={onSkip}><SkipForward size={17}/>{live.kind==='SURGE'?' Next wave':' Skip next fight'}</button><button className="btn btn-quiet" onClick={onSkipStage}><Zap size={17}/> {live.kind==='SURGE'?'Advance 5 waves':'Simulate to next stage'}</button><button className="btn btn-quiet" onClick={onFinish}><ArrowRight size={16}/> Finish tournament</button></div>
    {nextMatch&&<div className="tr-next-fight"><span>UP NEXT · {nextMatch.stage.toUpperCase()}</span><div><PlayerTag world={world} id={nextMatch.fighterA} onFighter={onFighter}/><b>VS</b><PlayerTag world={world} id={nextMatch.fighterB} onFighter={onFighter}/></div><button className="btn btn-quiet" onClick={()=>onTape(nextMatch.fighterA,nextMatch.fighterB)}>Tale of the tape</button></div>}
   </section>}
   {!live&&dueKind&&<section className="tr-upcoming panel"><div><div className="eyebrow">THIS MONTH’S BIG EVENT</div><h2>{displayName(dueKind)} {world.year}</h2><p>The entrants are confirmed when it opens.</p></div><button className="btn btn-primary" onClick={onStart}>Open {displayName(dueKind)} <ArrowRight size={17}/></button></section>}
   <div className="tr-shell">
-   <nav className="tr-vtabs" aria-label="Tournaments">{KINDS.map(k=>{const id=identityFor(displayName(k.kind));const isLive=live?.kind===k.kind;return <button key={k.kind} className={kind===k.kind?'active':''} style={identityStyle(id)} onClick={()=>{setKind(k.kind);setSub(isLive?'Annual view':'Overview');}}><EventLogo id={id} size={40}/><span><b>{displayName(k.kind).replace('WORLD COMBAT ','')}</b><small>{isLive?'LIVE NOW':k.when}</small></span><ChevronRight size={15}/></button>;})}</nav>
+   <nav className="tr-vtabs" aria-label="Tournaments">{KINDS.map(k=>{const id=identityFor(displayName(k.kind));const isLive=live?.kind===k.kind;return <button key={k.kind} className={kind===k.kind?'active':''} style={identityStyle(id)} onClick={()=>{setKind(k.kind);setSub(isLive?'Annual view':'Overview');}}><EventLogo id={id} size={40}/><span><b>{displayName(k.kind).replace('WORLD COMBAT ','')}</b><small>{isLive?'LIVE NOW':k.when}</small></span><ChevronRight size={15}/></button>;})}{(()=>{const id=identityFor('COLLISION');return <button className={isTag?'active':''} style={identityStyle(id)} onClick={()=>{setKind('DOUBLES');setSub('Overview');}}><EventLogo id={id} size={40}/><span><b>DOUBLES CROWN</b><small>Country teams · June &amp; December</small></span><ChevronRight size={15}/></button>;})()}</nav>
    <div className="tr-main">
-    <header className="tr-main-head themed" style={identityStyle(ident)}><EventLogo id={ident} size={52}/><div><h2 key={kind}><EventWordmark id={ident}>{name}</EventWordmark></h2><p>{KINDS.find(k=>k.kind===kind)!.blurb}</p></div></header>
+    <header className="tr-main-head themed" style={identityStyle(ident)}><EventLogo id={ident} size={52}/><div><h2 key={kind}><EventWordmark id={ident}>{name}</EventWordmark></h2><p>{isTag?'Countries with at least two fighters, represented by their two best. Each tie is #1 v #1 and #2 v #2; at 1–1, more finishes wins, then more rounds won. The crown belongs to the country.':KINDS.find(k=>k.kind===kind)!.blurb}</p></div></header>
     <div className="tr-subtabs" role="tablist">{(['Overview','Annual view','History'] as Sub[]).map(x=><button role="tab" aria-selected={sub===x} key={x} className={sub===x?'active':''} onClick={()=>setSub(x)}>{x}</button>)}</div>
+    {kind==='DOUBLES'?<Doubles world={world} sub={sub} onFighter={onFighter} onFight={onFight}/>:<>
     {sub==='Overview'&&<KindOverview world={world} kind={kind} onFighter={onFighter}/>}
     {sub==='Annual view'&&<Annual world={world} kind={kind} onFighter={onFighter} onFight={onFight} nextMatchId={nextMatch?.id}/>}
-    {sub==='History'&&<History world={world} kind={kind} onFighter={onFighter}/>}
+    {sub==='History'&&<History world={world} kind={kind} onFighter={onFighter}/>}</>}
    </div>
   </div>
  </div>;
@@ -124,3 +127,43 @@ function History({world,kind,onFighter}:{world:World;kind:TournamentKind;onFight
    {r?<button onClick={()=>onFighter(r.id)}><Avatar fighter={r} size={34}/><span><b><Flag code={r.flag}/>{r.name}</b><small>{r.style}</small></span></button>:<span className="dim">—</span>}</div>;})}
  </section>;
 }
+
+/** Country doubles: champion nation, ranking, the year's ties and the lineage of country reigns. */
+function Doubles({world,sub,onFighter,onFight}:{world:World;sub:Sub;onFighter:(id:string)=>void;onFight:(id:string)=>void}){
+ const tag=world.tag;
+ const ranking=useMemo(()=>doublesRanking(cloneTag(world)),[world]);
+ const years=useMemo(()=>[...new Set((tag?.ties??[]).map(t=>t.year))].sort((a,b)=>b-a),[tag]);
+ const [year,setYear]=useState<number>(years[0]??world.year);
+ const flagOf=(c:string)=>world.fighters.find(f=>f.country===c)?.flag;
+ const fighter=(id:string)=>world.fighters.find(f=>f.id===id);
+ const champ=tag?.champion,reign=tag?.reigns.at(-1);
+ const team=champ?teamOf(world,champ):null;
+ const Nation=({c}:{c:string})=><span className="tg-nation"><Flag code={flagOf(c)}/>{c}</span>;
+ if(sub==='Overview')return <div className="tg-overview">
+  <section className={`panel tg-champ ${champ?'':'vacant'}`}>{champ?<><div className="eyebrow">DOUBLES CROWN CHAMPIONS</div><h3><Flag code={flagOf(champ)} size={22}/>{champ}</h3><p>{reign&&!reign.endYear?`Since ${CALENDAR[Math.max(0,reign.startRound-1)]?.month??''} ${reign.startYear} · ${reign.defenses} defense${reign.defenses===1?'':'s'}`:''}</p>
+   <div className="tg-team">{(team??[]).map(f=><button key={f.id} onClick={()=>onFighter(f.id)}><Avatar fighter={f} size={64}/><b>{f.name}</b><small>{f.division} · {overallOf(f,world.year)} OVR</small></button>)}</div>
+   {reign&&<p className="tg-note">Honoured in this reign: {reign.fighters.map(id=>fighter(id)?.name).filter(Boolean).join(', ')}</p>}</>:<><div className="eyebrow">DOUBLES CROWN</div><h3>Vacant</h3><p>The top two ranked countries meet for it in June.</p></>}</section>
+  <section className="panel tg-ranking"><Heading eyebrow={`${ranking.length} NATIONS`} title="Doubles ranking"/>
+   <div className="tg-rank-list">{ranking.slice(0,24).map((r,i)=>{const t=teamOf(world,r.country);return <div key={r.country} className={`tg-rank ${r.country===champ?'champ':''}`}><span className="tg-pos">{r.country===champ?'C':i+(champ?0:1)}</span><Nation c={r.country}/><span className="tg-pair">{t?t.map(f=>f.name.split(' ').at(-1)).join(' · '):'no fit pair'}</span><b>{r.rating}</b></div>;})}</div>
+  </section>
+ </div>;
+ if(sub==='Annual view'){
+  const ties=(tag?.ties??[]).filter(t=>t.year===year).slice().reverse();
+  return <div className="tg-annual">
+   <label className="cal-year">SEASON<select value={year} onChange={e=>setYear(Number(e.target.value))}>{(years.length?years:[world.year]).map(y=><option key={y} value={y}>{y}</option>)}</select></label>
+   {ties.length===0&&<p className="empty-msg">No ties played this season yet. Ranking ties run on the second weekly card of most months.</p>}
+   {ties.map(t=><section key={t.id} className={`panel tg-tie ${t.title?'title':''}`}><div className="tg-tie-head"><span>{CALENDAR[t.round]?.month} · {t.title?'DOUBLES CROWN TIE':'RANKING TIE'}</span><b>{t.winner?<><Flag code={flagOf(t.winner)}/>{t.winner} win</>:'Drawn'}</b></div>
+    <div className="tg-tie-teams"><Nation c={t.a}/><i>v</i><Nation c={t.b}/></div>
+    {t.legs.map((l,i)=>{const a=fighter(l.a),b=fighter(l.b);return <button key={l.fightId} className="tg-leg" onClick={()=>onFight(l.fightId)}><small>#{i+1}</small><span className={l.w===l.a?'won':l.w?'lost':''}>{a?.name}</span><i>vs</i><span className={l.w===l.b?'won':l.w?'lost':''}>{b?.name}</span></button>;})}
+   </section>)}
+  </div>;
+ }
+ const reigns=(tag?.reigns??[]).slice().reverse();
+ return <div className="tr-history panel">
+  <div className="tr-history-head"><span>FROM</span><span>COUNTRY</span><span>DEFENSES · FIGHTERS</span></div>
+  {reigns.map(r=><div key={r.startTie} className="tr-history-row"><span className="tr-year">{r.startYear}{r.endYear?`–${r.endYear}`:"–now"}</span><span><Nation c={r.country}/></span><span>{r.defenses} · {r.fighters.map(id=>fighter(id)?.name.split(' ').at(-1)).filter(Boolean).join(', ')}</span></div>)}
+  {!reigns.length&&<p className="empty-msg">No Doubles Crown has been awarded yet.</p>}
+ </div>;
+}
+/** doublesRanking may seed missing ratings; work on a shallow copy so rendering never mutates the world. */
+const cloneTag=(w:World):World=>({...w,tag:w.tag?{...w.tag,ratings:{...w.tag.ratings}}:{ratings:{},champion:null,reigns:[],ties:[]}});

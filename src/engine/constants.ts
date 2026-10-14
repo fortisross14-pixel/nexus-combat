@@ -1,13 +1,32 @@
-import type {Division,Region,Skill,Style,Rarity,Archetype,Mentality} from './types';
+import type {Brand,Division,Region,Skill,Style,Rarity,Archetype,Mentality} from './types';
 export const START_YEAR=2058;
 export const SKILLS:readonly Skill[]=['Hands','Kicks','Clinch','Takedowns','Submissions','Ground Control','Defense','Stamina','Footwork'];
 export const STYLES:readonly Style[]=['Boxing','Kickboxing','Muay Thai','Karate','Taekwondo','Freestyle Wrestling','Greco-Roman Wrestling','Judo','Brazilian Jiu-Jitsu','Sambo','Sumo','MMA Hybrid'];
 export const MENTALITIES:readonly Mentality[]=['Strategist','Bold','Crazy','Cold'];
 export const ARCHETYPES:readonly Archetype[]=['Early Phenomenon','Classical Prime','Late Bloomer','Shooting Star','Durable Veteran','Volatile Talent'];
-export const DIVISIONS:readonly Division[]=['S-TIER','GLOBAL D2','AMERICAS D1','AMERICAS D2','EUROPE D1','EUROPE D2','AFRICA D1','AFRICA D2','APAC D1','APAC D2'];
+/* ───────────── Brands ─────────────
+   Two world-tier brands share event nights but never cross over, except at The Pinnacle and in tournaments. */
+export const BRANDS:readonly Brand[]=['NOVA','ONYX'];
+export const BRAND_INFO:Record<Brand,{name:string;tagline:string;color:string;deep:string}>={
+ NOVA:{name:'NOVA',tagline:'Bright lights. Fast hands.',color:'#4fd1ff',deep:'#0b3550'},
+ ONYX:{name:'ONYX',tagline:'Forged in the dark.',color:'#ff7a45',deep:'#3a160a'}};
+export const TOP_DIVISION:Record<Brand,Division>={NOVA:'NOVA S',ONYX:'ONYX S'};
+export const SECOND_DIVISION:Record<Brand,Division>={NOVA:'NOVA II',ONYX:'ONYX II'};
+/** Active divisions. */
+export const DIVISIONS:readonly Division[]=['NOVA S','NOVA II','ONYX S','ONYX II','AMERICAS D1','AMERICAS D2','EUROPE D1','EUROPE D2','AFRICA D1','AFRICA D2','APAC D1','APAC D2'];
+export const WORLD_DIVISIONS:readonly Division[]=['NOVA S','NOVA II','ONYX S','ONYX II'];
+export const isTopDivision=(d:Division|string)=>d==='S-TIER'||d==='NOVA S'||d==='ONYX S';
+export const isSecondDivision=(d:Division|string)=>d==='GLOBAL D2'||d==='NOVA II'||d==='ONYX II';
+export const isWorldTier=(d:Division|string)=>isTopDivision(d)||isSecondDivision(d);
+export const brandOf=(d:Division|string):Brand|null=>d.startsWith('NOVA')?'NOVA':d.startsWith('ONYX')?'ONYX':null;
+/** Roster size: 14 in each brand division, 20 in each continental division. */
+export const DIVISION_SIZE=(d:Division)=>isWorldTier(d)?14:20;
+export const ACTIVE_FIGHTERS=4*14+8*20;
+/** Short label: "NOVA S", "ONYX II", "Americas D1". */
+export const divisionLabel=(d:Division|string)=>d==='S-TIER'?'S Division':d==='GLOBAL D2'?'Division II':d;
 export const REGIONS:readonly Region[]=['Americas','Europe & Middle East','Africa','APAC'];
 export const REGION_DIVISIONS:Record<Region,readonly [Division,Division]>={Americas:['AMERICAS D1','AMERICAS D2'],'Europe & Middle East':['EUROPE D1','EUROPE D2'],Africa:['AFRICA D1','AFRICA D2'],APAC:['APAC D1','APAC D2']};
-export const DIVISION_NAMES:Record<Division,string>={'S-TIER':'S — Apex Division','GLOBAL D2':'II — Challenger Division','AMERICAS D1':'Americas · Division I','AMERICAS D2':'Americas · Division II','EUROPE D1':'Europe & Middle East · Division I','EUROPE D2':'Europe & Middle East · Division II','AFRICA D1':'Africa · Division I','AFRICA D2':'Africa · Division II','APAC D1':'APAC · Division I','APAC D2':'APAC · Division II'};
+export const DIVISION_NAMES:Record<Division,string>={'NOVA S':'NOVA · S Division','NOVA II':'NOVA · Division II','ONYX S':'ONYX · S Division','ONYX II':'ONYX · Division II','S-TIER':'S Division (before the brand split)','GLOBAL D2':'Division II (before the brand split)','AMERICAS D1':'Americas · Division I','AMERICAS D2':'Americas · Division II','EUROPE D1':'Europe & Middle East · Division I','EUROPE D2':'Europe & Middle East · Division II','AFRICA D1':'Africa · Division I','AFRICA D2':'Africa · Division II','APAC D1':'APAC · Division I','APAC D2':'APAC · Division II'};
 export const RARITY_COLORS:Record<Rarity,string>={Generational:'#ee5465',Legend:'#f6c770',Epic:'#c596ef',Rare:'#62a8f3',Uncommon:'#65cbaa',Common:'#8e99ae'};
 // Nine centered archetypal skill offsets, ordered as SKILLS. Per-fighter noise makes each athlete distinct.
 export const STYLE_OFFSETS:Record<Style,number[]>={

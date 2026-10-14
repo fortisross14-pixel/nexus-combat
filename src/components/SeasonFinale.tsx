@@ -2,15 +2,17 @@ import {useEffect} from 'react';
 import {Flag} from './Flag';
 import {ArrowRight,BarChart3,CalendarDays,Crown,Flame,Medal,Sparkles,Trophy,X} from 'lucide-react';
 import {Avatar} from './Avatar';
-import type {World} from '../engine/types';
-import {BELT_SHORT,CONTINENTAL_BELTS} from '../engine/belts';
+import type {CrownReign,World} from '../engine/types';
+import {BELT_SHORT,BRAND_BELTS,CONTINENTAL_BELTS} from '../engine/belts';
 
 /** Presentation-only ceremony. Awards and wins are always read from the completed simulation. */
 export function SeasonFinale({world,year,onClose}:{world:World;year:number;onClose:()=>void}){
   const season=world.seasons.find(s=>s.year===year);
   const awards=world.awards.find(a=>a.year===year);
-  const completedReign=world.crown.reigns.filter(r=>r.startYear<=year&&(!r.endYear||r.endYear>year||(r.endYear===year&&(r.endRound??0)>=48))).at(-1);
-  const champion=world.fighters.find(f=>f.id===completedReign?.fighterId);
+  const heldAtEnd=(list:CrownReign[])=>list.filter(r=>r.startYear<=year&&(!r.endYear||r.endYear>year||(r.endYear===year&&(r.endRound??0)>=48))).at(-1);
+  const pinnacle=world.pinnacle?.find(p=>p.year===year);
+  const brandChamps=BRAND_BELTS.map(b=>({b,f:world.fighters.find(f=>f.id===heldAtEnd(world.crowns?.[b]?.reigns??[])?.fighterId)}));
+  const champion=world.fighters.find(f=>f.id===(pinnacle?.winnerId??heldAtEnd(world.crown.reigns)?.fighterId));
   const athlete=(id:string|null|undefined)=>world.fighters.find(f=>f.id===id);
   const highlights=[
     {label:'FIGHTER OF THE YEAR',id:awards?.fighterOfYear,icon:<Trophy size={17}/>},
@@ -25,7 +27,9 @@ export function SeasonFinale({world,year,onClose}:{world:World;year:number;onClo
       <div className="finale-bar"><span><Sparkles size={15}/> NEXUS ANNUAL HONORS</span><button aria-label="Dismiss season ceremony" onClick={onClose}><X size={18}/></button></div>
       <div className="finale-main"><div className="finale-date"><CalendarDays size={17}/> THE YEAR IN COMBAT</div><div className="finale-year" aria-hidden="true">{year}</div><h2 id="finale-heading">A season becomes <em>history.</em></h2><p>The fights are decided. The records remain. The next generation is waiting.</p>
         <div className="finale-figures"><div><strong>{(season?.fights??(world.ledger[year]||[]).length).toLocaleString()}</strong><span>OFFICIAL BOUTS</span></div><div><strong>{season?.knockouts??(world.ledger[year]||[]).filter(e=>e.m==='KO'||e.m==='TKO').length}</strong><span>KNOCKOUTS</span></div><div><strong>{season?.submissions??(world.ledger[year]||[]).filter(e=>e.m==='SUB').length}</strong><span>SUBMISSIONS</span></div></div>
-        <div className="finale-board"><div className="finale-honors"><div className="finale-section-tag"><Trophy size={15}/> SEASON HONORS</div>{highlights.map(item=>{const fighter=athlete(item.id);return <div className="finale-honor" key={item.label}><span>{item.icon}</span><div><small>{item.label}</small><strong>{fighter?fighter.name:'Not awarded'}</strong></div>{fighter&&<span className="finale-flag"><Flag code={fighter.flag}/></span>}</div>})}</div><div className="finale-crown"><div className="finale-section-tag"><Crown size={15}/> THE WORLD CROWN</div>{champion?<><div className="finale-champion"><Avatar fighter={champion} size={122}/></div><strong>{champion.name}</strong><small><Flag code={champion.flag}/> · {champion.style}</small></>:<><div className="finale-vacant"><Crown size={35}/></div><strong>World Crown vacant</strong><small>The next title fight awaits</small></>}</div></div>
+        <div className="finale-board"><div className="finale-honors"><div className="finale-section-tag"><Trophy size={15}/> SEASON HONORS</div>{highlights.map(item=>{const fighter=athlete(item.id);return <div className="finale-honor" key={item.label}><span>{item.icon}</span><div><small>{item.label}</small><strong>{fighter?fighter.name:'Not awarded'}</strong></div>{fighter&&<span className="finale-flag"><Flag code={fighter.flag}/></span>}</div>})}</div><div className="finale-crown"><div className="finale-section-tag"><Crown size={15}/> {pinnacle||!world.crown.reigns.length?'THE PINNACLE CROWN':'THE WORLD CROWN'}</div>{champion?<><div className="finale-champion"><Avatar fighter={champion} size={122}/></div><strong>{champion.name}</strong><small><Flag code={champion.flag}/> · {champion.style}{pinnacle?.winnerBrand?` · ${pinnacle.winnerBrand}`:''}</small></>:<><div className="finale-vacant"><Crown size={35}/></div><strong>Not awarded</strong><small>The Pinnacle needs both brand champions</small></>}</div></div>
+        {brandChamps.some(x=>x.f)&&<div className="finale-moments"><span><Crown size={14}/> WORLD CHAMPIONS</span>{brandChamps.map(x=><strong key={x.b}>{x.b}: {x.f?.name??'vacant'}</strong>)}</div>}
+        {(()=>{const tag=world.tag?.reigns.filter(r=>r.startYear<=year&&(!r.endYear||r.endYear>year)).at(-1);const sup=world.supremacy?.find(x=>x.year===year);return (tag||sup)&&<div className="finale-moments"><span><Medal size={14}/> DOUBLES & SUPREMACY</span>{tag&&<strong>Doubles Crown: {tag.country}</strong>}{sup?.winnerId&&<strong>Continental Supremacy: {athlete(sup.winnerId)?.name}</strong>}</div>;})()}
         {(()=>{const cont=CONTINENTAL_BELTS.map(b=>({b,id:world.belts[b].reigns.filter(r=>r.startYear<=year&&(!r.endYear||r.endYear>year)).at(-1)?.fighterId})).filter(x=>x.id);return cont.length>0&&<div className="finale-moments"><span><Crown size={14}/> CONTINENTAL CHAMPIONS</span>{cont.map(x=><strong key={x.b}>{BELT_SHORT[x.b]}: {athlete(x.id)?.name}</strong>)}</div>;})()}
         {moments.length>0&&<div className="finale-moments"><span><BarChart3 size={14}/> DEFINING MOMENTS</span>{moments.map(m=><strong key={m.id}>{m.title}</strong>)}</div>}
         <button className="finale-continue" onClick={onClose}>ENTER {world.year} <ArrowRight size={18}/></button>

@@ -15,3 +15,7 @@
 .style-ledger th small,.style-ledger td small{color:#71879a;font-weight:600;font-size:10.5px}
 .style-days{display:flex;align-items:center;gap:6px}
 .style-days i{display:block;height:6px;border-radius:4px;background:linear-gradient(90deg,#f2d68d,#d9a54f);min-width:2px;max-width:90px}
+.honor-row{display:flex;align-items:center;gap:10px;width:100%;padding:8px 4px;border:0;border-bottom:1px solid var(--line,rgba(255,255,255,.07));background:none;color:inherit;text-align:left;cursor:pointer}
+.honor-row>b{font-family:var(--mono,monospace);font-size:12px;opacity:.7;width:38px}
+.honor-row span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.honor-row small{opacity:.65;font-size:12px}

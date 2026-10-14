@@ -4,8 +4,8 @@ import {Avatar} from './Avatar';
 import {Flag} from './Flag';
 import {Heading,PageHead,RarityPill} from './ui';
 import {ageOf,baseOf,overallOf} from '../engine/career';
-import {START_YEAR,RARITY_COLORS} from '../engine/constants';
-import {CONTINENTAL_BELTS} from '../engine/belts';
+import {START_YEAR,RARITY_COLORS,isTopDivision,isSecondDivision} from '../engine/constants';
+import {CONTINENTAL_BELTS,topReigns} from '../engine/belts';
 import type {Fighter,World} from '../engine/types';
 import './offseason.css';
 
@@ -39,8 +39,8 @@ export function Offseason({world,onFighter}:{world:World;onFighter:(id:string)=>
   {data.hof.length>0&&<section className="panel os-hof"><Heading eyebrow={`CLASS OF ${year}`} title="Hall of Fame inductees"/>{data.hof.map(h=>{const x=f(h.fighterId);return x&&<button key={h.fighterId} onClick={()=>onFighter(x.id)}><Avatar fighter={x} size={70}/><span><b><Flag code={x.flag}/>{x.name}</b><small>{x.style} · {x.joinedYear}–{x.retiredYear??'active'} · {x.record.wins}-{x.record.losses}-{x.record.draws}</small><em>{h.reason}</em></span><strong>{h.score}<small>LEGACY</small></strong></button>;})}</section>}
   <section className="panel"><Heading eyebrow={`${data.retired.length} CAREERS ENDED`} title="Retired"/>
    {data.retired.length?<div className="table-wrap"><table className="os-table"><thead><tr><th>FIGHTER</th><th>RARITY</th><th>YEARS ACTIVE</th><th>PEAK</th><th>RECORD</th><th>TITLES</th><th>FAME</th></tr></thead><tbody>{data.retired.map(x=>{const peak=x.history.reduce((m,h)=>h.overall>m.overall?h:m,x.history[0]);const best=x.history.reduce((m,h)=>tierOf(h.division)<tierOf(m.division)||(tierOf(h.division)===tierOf(m.division)&&h.rank<m.rank)?h:m,x.history[0]);
-    const crowns=world.crown.reigns.filter(r=>r.fighterId===x.id).length,cont=CONTINENTAL_BELTS.reduce((n,b)=>n+world.belts[b].reigns.filter(r=>r.fighterId===x.id).length,0),tour=world.tournaments.filter(t=>t.winnerId===x.id).length;
-    return <tr key={x.id} onClick={()=>onFighter(x.id)} className="table-row-action"><td><div className="table-fighter"><Avatar fighter={x} size={38}/><div className="table-fighter-text"><strong>{x.name}</strong><small><Flag code={x.flag}/>{x.country} · {x.style} · retired at {ageOf(x,year)}</small></div></div></td><td><RarityPill rarity={x.rarity}/></td><td>{x.joinedYear}–{year-1}<small className="os-sub">{year-x.joinedYear} seasons</small></td><td><b>{peak?.overall}</b><small className="os-sub">{best?`${best.division} ${best.rank===0?'C':`#${best.rank}`}`:''}</small></td><td>{x.record.wins}-{x.record.losses}-{x.record.draws}<small className="os-sub">{x.record.kos} KO · {x.record.submissions} SUB</small></td><td>{crowns+cont+tour?<span className="os-titles">{crowns>0&&<i>{crowns}× World</i>}{cont>0&&<i>{cont}× Cont.</i>}{tour>0&&<i>{tour}× Tourn.</i>}</span>:<span className="dim">—</span>}</td><td><b>{x.fame||0}</b></td></tr>;})}</tbody></table></div>:<p className="empty-msg">Nobody retired this offseason.</p>}
+    const crowns=topReigns(world).filter(r=>r.fighterId===x.id&&r.via!=='split').length,cont=CONTINENTAL_BELTS.reduce((n,b)=>n+world.belts[b].reigns.filter(r=>r.fighterId===x.id).length,0),tour=world.tournaments.filter(t=>t.winnerId===x.id).length;
+    return <tr key={x.id} onClick={()=>onFighter(x.id)} className="table-row-action"><td><div className="table-fighter"><Avatar fighter={x} size={38}/><div className="table-fighter-text"><strong>{x.name}</strong><small><Flag code={x.flag}/>{x.country} · {x.style} · retired at {ageOf(x,year)}</small></div></div></td><td><RarityPill rarity={x.rarity}/></td><td>{x.joinedYear}–{year-1}<small className="os-sub">{year-x.joinedYear} seasons</small></td><td><b>{peak?.overall}</b><small className="os-sub">{best?`${best.division} ${best.rank===0?'C':`#${best.rank}`}`:''}</small></td><td>{x.record.wins}-{x.record.losses}-{x.record.draws}<small className="os-sub">{x.record.kos} KO · {x.record.submissions} SUB</small></td><td>{crowns+cont+tour?<span className="os-titles">{crowns>0&&<i>{crowns}× World title</i>}{cont>0&&<i>{cont}× Cont.</i>}{tour>0&&<i>{tour}× Tourn.</i>}</span>:<span className="dim">—</span>}</td><td><b>{x.fame||0}</b></td></tr>;})}</tbody></table></div>:<p className="empty-msg">Nobody retired this offseason.</p>}
   </section>
   <section className="panel"><Heading eyebrow={`${data.rookies.length} DEBUTS`} title="New prospects" end={<span className="os-legend">{RARITY_ORDER.map(r=>{const n=data.rookies.filter(x=>x.rarity===r).length;return n>0&&<span key={r} style={{color:RARITY_COLORS[r as Fighter['rarity']]}}>{n} {r}</span>;})}</span>}/>
    <div className="os-rookies">{data.rookies.map(x=><button key={x.id} className={`os-rookie rarity-${x.rarity.toLowerCase()}`} onClick={()=>onFighter(x.id)}><Avatar fighter={x} size={56}/><span><b><Flag code={x.flag}/>{x.name}</b><small>{x.style} · Age {ageOf(x,year)} · {x.region}</small><RarityPill rarity={x.rarity}/></span><strong>{overallOf(x,world.year)}<small>OVR</small></strong></button>)}{!data.rookies.length&&<p className="empty-msg">No new fighters joined.</p>}</div>
@@ -56,7 +56,7 @@ export function Offseason({world,onFighter}:{world:World;onFighter:(id:string)=>
   <p className="os-note"><Sparkles size={14}/> Base ability follows each fighter’s private career curve; it changes once a year, at the turn of the season.</p>
  </div>;
 }
-const tierOf=(d:string)=>d==='S-TIER'?0:d==='GLOBAL D2'?1:d.endsWith('D1')?2:3;
+const tierOf=(d:string)=>isTopDivision(d)?0:isSecondDivision(d)?1:d.endsWith('D1')?2:3;
 function Mover({title,icon,rows,onFighter,year}:{title:string;icon:React.ReactNode;rows:{f:Fighter;d:number}[];onFighter:(id:string)=>void;year:number}){
  return <div className="os-mover"><h3>{icon}{title}</h3>{rows.map(({f,d})=><button key={f.id} onClick={()=>onFighter(f.id)}><Avatar fighter={f} size={30}/><span><b><Flag code={f.flag}/>{f.name}</b><small>Age {ageOf(f,year)} · base {baseOf(f,year)}</small></span><strong className={d>0?'positive':d<0?'negative':'dim'}>{d>0?'+':''}{d}</strong></button>)}</div>;
 }

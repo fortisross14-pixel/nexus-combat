@@ -1,71 +1,29 @@
 import {useEffect,useState} from 'react';
 import {rankText} from './ui';
 import {Flag} from './Flag';
-import {ArrowRight,ChevronRight,Clock3,Crown,FastForward,Pause,Play,SkipForward,Swords,Trophy,Volume2,X,Zap} from 'lucide-react';
+import {ArrowRight,ChevronRight,Clock3,Crown,FastForward,Pause,Play,SkipForward,Trophy,Volume2,X,Zap} from 'lucide-react';
 import {Avatar} from './Avatar';
-import {eventNameAt} from '../engine/tournaments';
-import {CALENDAR,ROUNDS_PER_YEAR} from '../engine/competition';
-import {overallOf} from '../engine/career';
 import type {BeltId,CrownReign,Fight,World} from '../engine/types';
-import {getFight} from '../engine/archive';
 import {STAT} from '../engine/combat';
 import {actionLabel,actionSentence} from './actionText';
-import {BELT_NAMES,BELT_SHORT,CONTINENTAL_BELTS,beltState,beltsHeld,isContinentalRound,isWorldTitleRound} from '../engine/belts';
+import {BELT_NAMES,BELT_SHORT,CONTINENTAL_BELTS,beltState,isBrandBelt,isTopBelt,TITLE_MONTHS} from '../engine/belts';
+import {MONTHS} from '../engine/competition';
 import {reignDuration} from '../engine/legacy';
-import {pickKey,pickStats,userOf} from '../engine/user';
-import {TaleOfTheTape} from './TaleOfTheTape';
-import {EventLogo,EventWordmark,identityFor,identityStyle} from './EventIdentity';
+import {EventLogo,identityFor,identityStyle} from './EventIdentity';
 import './pass2.css';
 
 /** Lineage of every belt: the World Crown (with interim titles) and the four continental belts. */
 export function CrownLineage({world,onFighter}:{world:World;onFighter:(id:string)=>void}){
- const [belt,setBelt]=useState<BeltId>('WORLD');
+ const [belt,setBelt]=useState<BeltId>('NOVA');
  const athlete=(id:string)=>world.fighters.find(f=>f.id===id);
  const c=beltState(world,belt);
- const rows=(list:CrownReign[],label:string)=>list.slice().reverse().map((reign,i)=>{const f=athlete(reign.fighterId);if(!f)return null;const isCurrent=!reign.endYear;const days=reignDuration(world,reign);return <button onClick={()=>onFighter(f.id)} key={`${label}-${reign.startFightId}-${i}`} className={`reign-row ${isCurrent?'reign-current':''}`}><div className="reign-avatar"><Avatar fighter={f} size={48}/></div><div><strong>{f.name} {isCurrent&&<span className="reign-current-label">{label}</span>}</strong><small><Flag code={f.flag}/> · {reign.startYear} – {isCurrent?'Present':reign.endYear} · {reign.defenses} defense{reign.defenses===1?'':'s'}{reign.via?' · elevated from interim':''}</small></div><div className="reign-days"><b>{days}</b><small>DAYS</small></div><ChevronRight size={15}/></button>;});
+ const rows=(list:CrownReign[],label:string)=>list.slice().reverse().map((reign,i)=>{const f=athlete(reign.fighterId);if(!f)return null;const isCurrent=!reign.endYear;const days=reignDuration(world,reign);return <button onClick={()=>onFighter(f.id)} key={`${label}-${reign.startFightId}-${i}`} className={`reign-row ${isCurrent?'reign-current':''}`}><div className="reign-avatar"><Avatar fighter={f} size={48}/></div><div><strong>{f.name} {isCurrent&&<span className="reign-current-label">{label}</span>}</strong><small><Flag code={f.flag}/> · {reign.startYear} – {isCurrent?'Present':reign.endYear} · {reign.defenses} defense{reign.defenses===1?'':'s'}{reign.via==='split'?' · carried over at the brand split':reign.via?' · elevated from interim':''}</small></div><div className="reign-days"><b>{days}</b><small>DAYS</small></div><ChevronRight size={15}/></button>;});
  return <section className="panel crown-panel"><div className="section-heading"><div><div className="eyebrow">CHAMPIONSHIP ARCHIVE</div><h2>{BELT_NAMES[belt]} lineage</h2></div><Crown size={20}/></div>
-  <div className="belt-tabs">{(['WORLD',...CONTINENTAL_BELTS] as BeltId[]).map(b=><button key={b} className={b===belt?'active':''} onClick={()=>setBelt(b)}>{BELT_SHORT[b]}</button>)}</div>
-  {c.reigns.length===0?<div className="chronicle-empty">{belt==='WORLD'?`The World Crown is vacant. It is contested at FIGHTOPIA, FAULTLINE and THE PINNACLE.`:'This belt is vacant. Continental titles are contested on the fourth circuit card of February, May, August and November.'}</div>:
+  <div className="belt-tabs">{(['NOVA','ONYX',...CONTINENTAL_BELTS,...(world.crown.reigns.length?['WORLD']:[])] as BeltId[]).map(b=><button key={b} className={b===belt?'active':''} onClick={()=>setBelt(b)}>{BELT_SHORT[b]}</button>)}</div>
+  {c.reigns.length===0?<div className="chronicle-empty">{isBrandBelt(belt)?`The ${belt} World Title is vacant. It is contested on ${TITLE_MONTHS[belt].map(m=>MONTHS[m]).join(', ')} title nights.`:'This belt is vacant. Continental titles are contested on the third weekly card of February, May, August and November.'}</div>:
   <div className="reign-ledger">{rows(c.reigns,'CHAMPION')}</div>}
   {(c.interimReigns?.length||0)>0&&<><div className="belt-subhead">INTERIM TITLE HISTORY</div><div className="reign-ledger">{rows(c.interimReigns!,'INTERIM')}</div></>}
  </section>;
-}
-/** What is at stake on each calendar slot this season. */
-export function slotStakes(year:number,i:number):{label:string;kind:'world'|'continental'|'eliminator'}|null{
- if(isWorldTitleRound(i))return {label:'WORLD CROWN',kind:'world'};
- if(isContinentalRound(i))return {label:'CONTINENTAL TITLES',kind:'continental'};
- if(CALENDAR[i].week===5&&!eventNameAt(year,i))return {label:'TITLE ELIMINATOR',kind:'eliminator'};
- return null;
-}
-export function EventCalendar({world,onPrepare,onFighter}:{world:World;onPrepare:()=>void;onFighter:(id:string)=>void}){
- const holder=world.fighters.find(f=>f.id===world.crown.championId);
- const interim=world.fighters.find(f=>f.id===world.crown.interimId);
- const next=CALENDAR[world.round];const special=eventNameAt(world.year,world.round);
- const nextIdent=identityFor(special||next.name,isContinentalRound(world.round));
- return <><div className="page-title"><div><div className="eyebrow"><span className="live-dot"/> THE NEXUS GLOBAL SCHEDULE</div><h1>Fight <span>Calendar.</span></h1><p>Sixty cards a year: four weekly cards and one marquee event per month. The World Crown is on the line in March, June and December; continental belts in February, May, August and November.</p></div></div>
- <div className="calendar-top"><div className="calendar-feature themed" style={identityStyle(nextIdent)}><div className="eyebrow">NEXT LIVE EVENT · {world.year}</div><div className="hero-brand left"><EventLogo id={nextIdent} size={58}/><h2><EventWordmark id={nextIdent}>{special||next.name}</EventWordmark></h2></div><p className="ev-tagline">{nextIdent.tagline}</p><p>{special==='WORLD COMBAT OLYMPIAD'?'Quadrennial 40-fighter championship':next.label} · {next.month} {world.year}</p><button className="btn btn-primary" onClick={onPrepare}>{world.pendingFight||world.activeTournamentId?'Enter the event':'Simulate to event'} <ArrowRight size={17}/></button></div><div className="calendar-champion"><Crown size={30}/><span>CURRENT WORLD CHAMPION</span>{holder?<button onClick={()=>onFighter(holder.id)}><Avatar fighter={holder} size={62}/><strong>{holder.name}</strong><small><Flag code={holder.flag}/> · {holder.style}</small></button>:<strong>VACANT</strong>}{interim&&<small>Interim champion: {interim.name}</small>}</div></div>
- <div className="calendar-layout"><section className="panel"><div className="section-heading"><div><div className="eyebrow">OFFICIAL SEASON CALENDAR</div><h2>{world.year} Fight Circuit</h2></div><span className="subtle-tag">60 EVENTS · 12 MONTHS</span></div><div className="events-list">{CALENDAR.map((e,i)=>{const stakes=slotStakes(world.year,i);return <div className={`event-row ${i===world.round?'event-next':''} ${i<world.round?'event-done':''}`} key={i}><div className="event-index">{String(i+1).padStart(2,'0')}</div><div className="event-month">{e.month}</div>{(()=>{const id=identityFor(eventNameAt(world.year,i)||e.name,isContinentalRound(i));return id.key==='CIRCUIT'?<span className="event-logo-spacer"/>:<EventLogo id={id} size={30}/>;})()}<div className="event-details"><strong>{eventNameAt(world.year,i)||e.name}</strong><small>{eventNameAt(world.year,i)?i===34?'Annual twenty-fighter Royale':i===39?'Quadrennial 40-fighter championship':'Annual eight-fighter Grand Prix':e.label}</small></div><div className="event-tags">{stakes&&<span className={`event-title-mark ${stakes.kind}`}><Crown size={12}/> {stakes.label}</span>}<span className="event-status">{i<world.round?'COMPLETED':i===world.round?(world.pendingFight?'MAIN EVENT PENDING':world.activeTournamentId?'TOURNAMENT LIVE':'NEXT EVENT'):'UPCOMING'}</span></div></div>;})}</div><div className="calendar-phase-note">Four circuit nights plus one major event take place each month. The Surge runs in July, the Olympiad in August of every fourth year, The Crucible in November. Marquee nights without a title on the line are title eliminators: the winner becomes the mandatory challenger.</div></section><CrownLineage world={world} onFighter={onFighter}/></div>
- </>;
-}
-export function FightNight({world,onPrepare,onWatch,onSkip,onFighter,onFight,onPick}:{world:World;onPrepare:()=>void;onWatch:()=>void;onSkip:()=>void;onFighter:(id:string)=>void;onFight:(id:string)=>void;onPick:(id:string)=>void}){
- const pending=world.pendingFight,slot=CALENDAR[world.round];const a=world.fighters.find(f=>f.id===pending?.fighterA),b=world.fighters.find(f=>f.id===pending?.fighterB);
- const [showTape,setShowTape]=useState(true);
- const lastResults=world.lastFightIds.map(id=>getFight(world,id)).filter((x):x is Fight=>Boolean(x)).slice().reverse();
- const user=userOf(world);const stats=pickStats(user);const myPick=user.pendingPick?.key===pickKey(world.year,world.round)?user.pendingPick.pick:null;
- const lastPick=stats.last;const lastPickFight=lastPick&&!pending?getFight(world,lastPick.fightId):undefined;
- const header=pending?.kind==='eliminator'?'TITLE ELIMINATOR · THREE ROUNDS · WINNER BECOMES MANDATORY CHALLENGER':pending?.kind==='interim'?'INTERIM WORLD CROWN · FIVE ROUNDS':pending?.kind==='unification'?'WORLD CROWN UNIFICATION · FIVE ROUNDS':pending?.titleFight?'WORLD CROWN · FIVE ROUNDS':'FEATURED MAIN EVENT · THREE ROUNDS';
- const beltOf=(id:string)=>beltsHeld(world,id);
- const ident=identityFor(eventNameAt(world.year,world.round)||slot.name,isContinentalRound(world.round));
- return <div className="fight-night"><div className="night-topline"><span><span className="live-dot"/> NEXUS BROADCAST NETWORK</span><strong>{slot.month} {world.year} · EVENT {world.round+1}/{ROUNDS_PER_YEAR}</strong></div><section className="night-hero themed" style={identityStyle(ident)}><div className="eyebrow">{slot.name==='THE PINNACLE'?'THE BIGGEST NIGHT OF THE YEAR':isWorldTitleRound(world.round)?'WORLD CROWN NIGHT':isContinentalRound(world.round)?'CONTINENTAL TITLE NIGHT':slot.week===5?'TITLE ELIMINATOR NIGHT':'NEXUS GLOBAL CIRCUIT'}</div><div className="hero-brand"><EventLogo id={ident} size={78}/><h1><EventWordmark id={ident}>{eventNameAt(world.year,world.round)||slot.name}</EventWordmark></h1></div><p className="ev-tagline">{ident.tagline}</p><p>{slot.label} · {world.year}</p><div className="night-progress">{CALENDAR.filter((_,i)=>Math.floor(i/5)===Math.floor(world.round/5)).map((e,i)=><span key={i} className={i<=world.round%5?'active':''} title={e.name}/>)}</div></section>
- {!pending?<div className="panel night-await"><Swords size={32}/><h2>Next event awaits</h2><p>The entire card will run automatically except the featured fight. That result stays hidden until you decide to watch or skip.</p>{lastPick&&lastPickFight&&<p className={`pick-result ${lastPick.correct?'good':lastPick.correct===false?'bad':''}`}>Your last pick: {world.fighters.find(f=>f.id===lastPick.pick)?.name} — {lastPick.correct?'correct!':lastPick.correct===false?'missed.':'draw.'} ({stats.correct}/{stats.made} correct · streak {stats.streak})</p>}<button className="btn btn-primary" onClick={onPrepare}>Simulate to {slot.name} <ArrowRight size={17}/></button></div>:
- <section className="panel night-headliner"><div className="night-headline-header"><span><Crown size={15}/> {header}</span><span>UNPLAYED · RESULT UNKNOWN</span></div><div className="night-faceoff">{[a,b].map((f,i)=>f&&<div className="night-fighter" key={f.id}><button aria-label={`Open ${f.name}`} onClick={()=>onFighter(f.id)}><Avatar fighter={f} size={145}/></button><div className="night-fighter-nation"><Flag code={f.flag}/> {f.country}</div><h2>{f.name}{beltOf(f.id).map(bt=><span key={bt} className="belt-chip"><Crown size={10}/>{BELT_SHORT[bt]}</span>)}{world.crown.interimId===f.id&&<span className="belt-chip">INTERIM</span>}</h2><span>{f.style} · {f.mentality}</span><div className="night-attributes"><b>{overallOf(f,world.year)}</b><small>OVR</small><b>{f.condition}</b><small>FIT</small><b>{rankText(f.rank)}</b><small>RANK</small></div>{i===0&&<div className="night-vs">VS</div>}</div>)}</div>
-  {a&&b&&<div className="pick-panel"><span>YOUR PICK · WHO WINS?</span><div className="pick-buttons">{[a,b].map(f=><button key={f.id} className={myPick===f.id?'chosen':''} onClick={()=>onPick(f.id)}>{myPick===f.id?'✓ ':''}{f.name}</button>)}</div><div className="pick-stats"><span><b>{stats.made}</b>picks</span><span><b>{Math.round(stats.accuracy*100)}%</b>correct</span><span><b>{stats.streak}</b>streak</span><span><b>{stats.best}</b>best streak</span><span><b>{stats.upsets}</b>upsets called</span></div></div>}
-  <div className="night-actions"><button className="btn btn-primary" onClick={onWatch}><Play size={17} fill="currentColor"/> WATCH LIVE FIGHT</button><button className="btn btn-secondary" onClick={onSkip}><SkipForward size={17}/> Skip to result</button></div><div className="night-disclaimer">No winner has been calculated yet. Both actions use the same combat engine and save-compatible RNG stream.</div>
-  <div className="night-tape-toggle"><button className="btn btn-quiet" onClick={()=>setShowTape(v=>!v)}>{showTape?'Hide':'Show'} tale of the tape</button></div>
-  {showTape&&a&&b&&<div className="night-tape"><TaleOfTheTape world={world} a={a} b={b} rounds={pending.titleFight?5:3} onFighter={onFighter} onFight={onFight} compact/></div>}
- </section>}
- <section className="panel night-undercard"><div className="section-heading"><div><div className="eyebrow">{pending?'COMPLETED UNDERCARD':'RECENT RESULTS'}</div><h2>Event results</h2></div><span className="subtle-tag">{lastResults.length} BOUTS</span></div><div className="night-bout-list">{lastResults.slice(0,40).map(f=><button onClick={()=>onFight(f.id)} key={f.id}><span className="night-method">{f.method}</span><strong>{f.headline}</strong>{f.titleFight&&<span className="belt-chip"><Crown size={10}/>{f.belt?BELT_SHORT[f.belt]:'World Crown'}</span>}<small>{f.division}</small><ChevronRight size={15}/></button>)}{lastResults.length===0&&<p className="empty-msg">No undercard fights yet. Enter the next event to start the competition.</p>}</div></section>
- </div>;
 }
 const sumLines=(lines:(number[]|undefined)[])=>lines.reduce<number[]>((acc,l)=>{if(l)l.forEach((v,i)=>{acc[i]=(acc[i]||0)+v;});return acc;},[]);
 const mmss=(sec:number)=>`${Math.floor(sec/60)}:${String(Math.round(sec%60)).padStart(2,'0')}`;
@@ -74,6 +32,10 @@ const BUBBLE_LIFE=1.7;
 function hash(text:string){let h=7;for(const ch of text)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h);}
 export function boutBanner(fight:Fight){
  const belt=fight.belt?BELT_SHORT[fight.belt]:'World Crown';
+ if(fight.kind==='pinnacle')return 'THE PINNACLE · NOVA v ONYX UNIFIER';
+ if(fight.kind==='contract')return 'TITLE-SHOT CONTRACT';
+ if(fight.tournamentId?.startsWith('tag-'))return 'DOUBLES CROWN · COUNTRY TIE';
+ if(fight.tournamentId?.startsWith('supremacy-'))return 'CONTINENTAL SUPREMACY';
  if(fight.kind==='eliminator')return 'TITLE ELIMINATOR';
  if(fight.kind==='interim')return `INTERIM ${belt.toUpperCase()}`;
  if(fight.kind==='unification')return `${belt.toUpperCase()} · UNIFICATION`;
@@ -84,7 +46,7 @@ export function boutBanner(fight:Fight){
  * Playback never re-simulates or alters the combat result. */
 export function LiveFight({fight,world,onComplete}:{fight:Fight;world:World;onComplete:()=>void}){
  const a=world.fighters.find(f=>f.id===fight.fighterA)!,b=world.fighters.find(f=>f.id===fight.fighterB)!;
- const liveIdent=identityFor(fight.eventName,!!fight.belt&&fight.belt!=='WORLD');
+ const liveIdent=identityFor(fight.eventName,!!fight.belt&&!isTopBelt(fight.belt));
  const stopped=['KO','TKO','SUB'].includes(fight.method);
  const finishParts=fight.finishTime.split(':').map(Number);
  const lastRoundSeconds=stopped?Math.max(1,Math.min(300,(finishParts[0]||0)*60+(finishParts[1]||0))):300;

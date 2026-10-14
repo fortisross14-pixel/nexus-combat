@@ -56,3 +56,18 @@
 @media(max-width:1200px){.ov-belts{grid-template-columns:repeat(2,minmax(0,1fr))}.ov-tournaments{grid-template-columns:1fr}}
 @media(max-width:1000px){.ov-top,.ov-columns{grid-template-columns:1fr}}
 @media(max-width:640px){.ov-belts{grid-template-columns:1fr}.ov-vs{grid-template-columns:1fr}.ov-vs-side.right{flex-direction:row;text-align:left}.ov-vs-side.right span{justify-items:start}.ov-vs-mark{display:none}}
+/* v1.4 · two brands */
+.ov-brands{display:grid;grid-template-rows:1fr 1fr;gap:16px}
+.ov-brands .ov-crown{border-top:3px solid var(--brand);background:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--brand) 22%,transparent) 0,transparent 62%),#111c29}
+.ov-brands .belt-card-head{color:var(--brand)}
+.ov-honors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+.ov-honor{display:flex;align-items:center;gap:12px;text-align:left;color:inherit;border:1px solid var(--stroke);cursor:pointer;min-width:0}
+.ov-honor.pinnacle{background:linear-gradient(120deg,#4fd1ff1f,#ff7a451f),var(--panel)}
+.ov-h-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:#ffffff0d;color:var(--gold);flex:none}
+.ov-h-text{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.ov-h-text small{font-size:10.5px;letter-spacing:.09em;color:var(--dim)}
+.ov-h-text b{display:flex;align-items:center;gap:6px;font-size:15px;flex-wrap:wrap}
+.ov-h-text em{font-style:normal;font-size:12px;color:var(--mute)}
+.ov-brand-list+.ov-brand-list{margin-top:12px}
+.ov-brand-head{font-size:11px;font-weight:700;letter-spacing:.14em;margin:4px 0 6px}
+@media(max-width:1000px){.ov-honors{grid-template-columns:1fr}}

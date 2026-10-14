@@ -2,7 +2,8 @@ import {it} from 'vitest';
 import {createWorld,advanceYear} from '../../src/engine/world';
 import {ageOf,overallOf} from '../../src/engine/career';
 import {countryNamed} from '../../src/engine/names';
-import {REGIONS,DIVISIONS} from '../../src/engine/constants';
+import {REGIONS,DIVISIONS,isTopDivision} from '../../src/engine/constants';
+import {topReigns} from '../../src/engine/belts';
 import type {Rarity,World} from '../../src/engine/types';
 import {env,fmt,pct,Report} from './shared';
 
@@ -19,12 +20,12 @@ it('rarity census: targets, regions, key countries and careers',()=>{
    for(const r of ['Generational','Legend','Epic'] as Rarity[])census[r].push(act.filter(f=>f.rarity===r).length);
    const gens=act.filter(f=>f.rarity==='Generational');if(new Set(gens.map(f=>f.region)).size===gens.length)genRegionsOk++;
    if(REGIONS.every(r=>act.some(f=>f.rarity==='Legend'&&f.region===r)))legendRegionsOk++;
-   for(const f of act.filter(f=>f.division==='S-TIER'))sTierMix[f.rarity]=(sTierMix[f.rarity]||0)+1;
+   for(const f of act.filter(f=>isTopDivision(f.division)))sTierMix[f.rarity]=(sTierMix[f.rarity]||0)+1;
    yearsSampled++;
   };
   // Founding layout
   const act0=w.fighters;const mix=(d:string)=>['Generational','Legend','Epic','Rare','Uncommon','Common'].map(r=>`${r[0]}${act0.filter(f=>f.division===d&&f.rarity===r).length}`).join(' ');
-  R.line(`\nSEED ${seed} founding · S: ${mix('S-TIER')} · Global D2: ${mix('GLOBAL D2')} · S avg OVR ${fmt(act0.filter(f=>f.division==='S-TIER').reduce((s,f)=>s+overallOf(f,w.year),0)/20)}`);
+  R.line(`\nSEED ${seed} founding · NOVA S: ${mix('NOVA S')} · ONYX S: ${mix('ONYX S')} · NOVA II: ${mix('NOVA II')} · ONYX II: ${mix('ONYX II')} · S avg OVR ${fmt(act0.filter(f=>isTopDivision(f.division)).reduce((s,f)=>s+overallOf(f,w.year),0)/28)}`);
   snapshot(w);
   for(let y=0;y<YEARS;y++){w=advanceYear(w);snapshot(w);}
   const span=(a:number[])=>`${Math.min(...a)}–${Math.max(...a)} (avg ${fmt(a.reduce((s,x)=>s+x,0)/a.length)})`;
@@ -46,11 +47,11 @@ it('rarity census: targets, regions, key countries and careers',()=>{
   const retired=(r:Rarity)=>all.filter(f=>f.rarity===r&&f.status==='retired'&&f.joinedYear>2058);
   const avgRet=(r:Rarity)=>retired(r).length?fmt(retired(r).reduce((s,f)=>s+ageOf(f,f.retiredYear!),0)/retired(r).length):'—';
   R.line(`  average retirement age · generational ${avgRet('Generational')} · legend ${avgRet('Legend')} · epic ${avgRet('Epic')} · rare ${avgRet('Rare')}`);
-  R.line(`  S-Tier composition (avg per season): ${Object.entries(sTierMix).map(([k,v])=>`${k} ${fmt(v/yearsSampled)}`).join(' · ')}`);
-  const champ=w.fighters.find(f=>f.id===w.crown.championId);if(champ)R.check(`seed ${seed} champion form`,champ.shape,5,5,'');
-  const reigns=w.crown.reigns;const byR=(r:string)=>reigns.filter(x=>w.fighters.find(f=>f.id===x.fighterId)?.rarity===r);
-  R.line(`  avg defenses per reign · generational ${fmt(byR('Generational').reduce((s,x)=>s+x.defenses,0)/Math.max(1,byR('Generational').length))} · legend ${fmt(byR('Legend').reduce((s,x)=>s+x.defenses,0)/Math.max(1,byR('Legend').length))}`);R.line(`  World Crown: ${reigns.length} reigns in ${YEARS} seasons · avg ${fmt(reigns.reduce((s,r)=>s+r.defenses,0)/reigns.length)} defenses · longest ${Math.max(...reigns.map(r=>r.defenses))} · by rarity: ${['Generational','Legend','Epic','Rare'].map(r=>`${r} ${reigns.filter(x=>w.fighters.find(f=>f.id===x.fighterId)?.rarity===r).length}`).join(' · ')}`);
-  for(const d of DIVISIONS.slice(0,2))R.line(`  ${d} avg OVR now ${fmt(w.fighters.filter(f=>f.status==='active'&&f.division===d).reduce((s,f)=>s+overallOf(f,w.year),0)/20)}`);
+  R.line(`  S Division composition (both brands) (avg per season): ${Object.entries(sTierMix).map(([k,v])=>`${k} ${fmt(v/yearsSampled)}`).join(' · ')}`);
+  for(const b of ['NOVA','ONYX'] as const){const champ=w.fighters.find(f=>f.id===w.crowns![b].championId);if(champ)R.check(`seed ${seed} ${b} champion form`,champ.shape,5,5,'');}
+  const reigns=topReigns(w).filter(r=>r.via!=='split');const byR=(r:string)=>reigns.filter(x=>w.fighters.find(f=>f.id===x.fighterId)?.rarity===r);
+  R.line(`  avg defenses per reign · generational ${fmt(byR('Generational').reduce((s,x)=>s+x.defenses,0)/Math.max(1,byR('Generational').length))} · legend ${fmt(byR('Legend').reduce((s,x)=>s+x.defenses,0)/Math.max(1,byR('Legend').length))}`);R.line(`  World titles (both brands): ${reigns.length} reigns in ${YEARS} seasons · avg ${fmt(reigns.reduce((s,r)=>s+r.defenses,0)/reigns.length)} defenses · longest ${Math.max(0,...reigns.map(r=>r.defenses))} · by rarity: ${['Generational','Legend','Epic','Rare'].map(r=>`${r} ${reigns.filter(x=>w.fighters.find(f=>f.id===x.fighterId)?.rarity===r).length}`).join(' · ')}`);
+  for(const d of DIVISIONS.slice(0,4))R.line(`  ${d} avg OVR now ${fmt(w.fighters.filter(f=>f.status==='active'&&f.division===d).reduce((s,f)=>s+overallOf(f,w.year),0)/14)}`);
  }
  R.finish();
 });
