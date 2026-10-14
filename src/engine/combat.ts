@@ -4,9 +4,10 @@ import type {ActionCategory,ExchangeBeat,Fighter,FightAction,FightMethod,FightPo
 
 /* ───────────────────────────── Tuning ─────────────────────────────
    The displayed win chance is a logistic curve on a rating-point "edge":
-   a 3.5-point edge ≈ 60%, 7 ≈ 70%, 12 ≈ 80%, 19 ≈ 90%. The exchange engine is
-   tuned (see tests/balance) so real outcomes follow that same curve. */
-export const ODDS_SCALE=8.65;
+   updated for action-based fatigue: approximately a 3-point edge gives 60%,
+   a 6-point edge 70%, a 10-point edge 80%, and a 16-point edge 90%.
+   Calibration is monitored by the combat balance suite. */
+export const ODDS_SCALE=7.35;
 /** Exchange-contest sensitivity to a one-point skill difference. */
 const K=28;
 /** Fight-night form: hidden good/bad-night roll, in rating points. */
@@ -69,7 +70,17 @@ interface Combatant {
 const logit=(p:number)=>Math.log(p/(1-p));
 const sigmoid=(x:number)=>1/(1+Math.exp(-x));
 function gaussian(rng:Random){const u=Math.max(1e-9,rng.next()),v=rng.next();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
-function eff(c:Combatant,s:Skill){return c.sk[s]+c.bonus-(100-c.energy)*.11-c.damage*.09-(c.rocked?12:0);}
+/** High stamina makes sustained work markedly cheaper. A 100-stamina fighter uses
+    about half the energy of an 85-stamina fighter for the same workload; a 70
+    stamina fighter uses more than twice as much. */
+function enduranceCost(stamina:number){return clamp(Math.exp((85-stamina)/20),.45,2.6);}
+/** Fatigue first erodes effectiveness, then becomes punishing once a fighter is
+    running on fumes. It affects offense AND the ability to defend submissions. */
+function eff(c:Combatant,s:Skill){
+ const tired=100-c.energy;
+ const fatigue=tired*.12+Math.max(0,55-c.energy)*.16+Math.max(0,30-c.energy)*.20;
+ return c.sk[s]+c.bonus-fatigue-c.damage*.09-(c.rocked?12:0);
+}
 /** Probability that X's offensive skill beats Y's defensive skill, around a base rate. */
 function contest(x:number,y:number,base:number,shift=0){return sigmoid(logit(base)+(x-y)/K+shift);}
 
@@ -133,8 +144,16 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
     const l=other(w);
     note(m==='SUB'?`${w.f.name} locks it in — ${l.f.name} taps out!`:m==='KO'?`${w.f.name} lands the knockout blow! ${l.f.name} is out cold.`:`${w.f.name} unloads until the referee waves it off!`);
    };
-   const spend=(c:Combatant,load:number)=>{c.energy=clamp(c.energy-clamp(2.4-(c.sk.Stamina-75)*.03+load+Math.max(0,c.f.weight-95)*.018+rng.float(-.4,.8),.8,7.5),3,100);};
-   const dealt=(att:Combatant,def:Combatant,amount:number)=>{def.damage+=amount;att.round[STAT.DMG]+=amount;att.total[STAT.DMG]+=amount;};
+   // Workload is charged for every strike, takedown and positional struggle, not
+   // just once per exchange. Heavier bodies have a small additional cost.
+   const spend=(c:Combatant,load:number)=>{
+    const weight=1+Math.max(0,c.f.weight-95)*.004;
+    c.energy=clamp(c.energy-load*enduranceCost(c.sk.Stamina)*weight*.88,2,100);
+   };
+   const dealt=(att:Combatant,def:Combatant,amount:number)=>{
+    def.damage+=amount;spend(def,amount*.045);
+    att.round[STAT.DMG]+=amount;att.total[STAT.DMG]+=amount;
+   };
    const stat=(c:Combatant,i:number,n=1)=>{c.round[i]+=n;c.total[i]+=n;};
 
    /** One fighter's striking flurry. Returns true if the fight ended. */
@@ -150,6 +169,10 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
      const strikeSkill=mode==='ground'?eff(att,'Ground Control'):mode==='clinch'?(eff(att,'Clinch')+eff(att,'Hands'))/2:key.includes('kick')?eff(att,'Kicks'):eff(att,'Hands');
      const defense=mode==='ground'?(eff(def,'Defense')+eff(def,'Ground Control'))/2:mode==='clinch'?(eff(def,'Defense')+eff(def,'Clinch'))/2:(eff(def,'Defense')*.7+eff(def,'Footwork')*.3);
      const base=(key==='jab'?.5:isPower?.3:.4)+(mode==='ground'?.12+gpos*.04:0)+(def.rocked?.15:0);
+     // Throwing costs energy even when the blow misses. Defending sustained
+     // combinations also has a measurable (but smaller) energy demand.
+     spend(att,isPower?.62:key==='jab'?.23:.36);
+     spend(def,mode==='ground'?.28:mode==='clinch'?.22:.18);
      stat(att,STAT.STR);if(sig)stat(att,STAT.SIG);if(isPower)stat(att,STAT.POW);
      if(rng.next()>=contest(strikeSkill+lateBonus(att),defense+lateBonus(def),clamp(base,.08,.85)))continue;
      stat(att,STAT.STRL);if(sig)stat(att,STAT.SIGL);if(isPower)stat(att,STAT.POWL);
@@ -172,13 +195,24 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
     }
     return false;
    };
-   const trySub=(att:Combatant,def:Combatant,name:string,base:number):boolean=>{
+   const trySub=(att:Combatant,def:Combatant,name:string,base:number,bottomAttack=false):boolean=>{
     stat(att,STAT.SUBA);
-    const p=contest(eff(att,'Submissions'),eff(def,'Submissions')*.55+eff(def,'Ground Control')*.45,base,def.damage*.006+(def.energy<30?.2:0));
-    if(rng.next()<p){finish(att,'SUB','tap');return true;}
+    spend(att,1.15); // Isometric grip fighting and submission entries are costly.
+    spend(def,.90);
+    const positionalEdge=eff(att,'Ground Control')-eff(def,'Ground Control');
+    // Being underneath a superior controller greatly reduces the chance of
+    // securing the final grip/angle. Guard submissions are still possible,
+    // especially against a top player with weak submission defense.
+    const positionalShift=bottomAttack?clamp(positionalEdge*.065-.55,-1.65,.35):clamp(positionalEdge*.026,-.4,.5);
+    const p=contest(eff(att,'Submissions'),eff(def,'Submissions')*.5+eff(def,'Ground Control')*.5,
+      base, positionalShift+def.damage*.004+(def.energy<28?.16:0));
+    if(rng.next()<p){
+     if(bottomAttack)note(`${att.f.name} catches ${def.f.name} in a rare submission counter from guard.`);
+     finish(att,'SUB','tap');return true;
+    }
     act(att,`${name}-att`,'sub');act(def,`${name}-esc`,'sub');
     if(rng.next()<.35)note(`${att.f.name} threatens a ${name.replace(/-/g,' ')}, but ${def.f.name} escapes.`);
-    spend(def,.8);return false;
+    return false;
    };
 
    if(pos==='Stand-up'){
@@ -201,7 +235,9 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
       spend(shooter,1.6);spend(def,.9);
      }
     }else{
-     const vol=(c:Combatant)=>Math.max(1,Math.round(2.2+rng.next()*2.6+c.volume-(c.energy<40?1:0)-(c.rocked?1:0)));
+     // A badly fatigued fighter protects themself and has less output late.
+     const vol=(c:Combatant)=>Math.max(1,Math.round(2.2+rng.next()*2.6+c.volume-
+       (c.energy<55?1:0)-(c.energy<32?1:0)-(c.rocked?1:0)));
      // Whoever wins the timing exchange throws first.
      const first=rng.next()<contest(eff(x,'Footwork'),eff(y,'Footwork'),.5)?x:y;
      if(!flurry(first,other(first),vol(first),'range'))flurry(other(first),first,vol(other(first)),'range');
@@ -227,26 +263,47 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
     const t=top!,bot=other(t);
     stat(t,STAT.CTRL,EX_SECONDS);
     // Bottom fighter: sweep, scramble up, or attack from guard.
-    const escape=contest((eff(bot,'Ground Control')*.45+eff(bot,'Footwork')*.35+eff(bot,'Stamina')*.2),eff(t,'Ground Control'),clamp(.36-gpos*.04,.14,.38));
-    const guardSub=gpos<=1&&rng.next()<clamp(.03+(bot.sk.Submissions-68)*.003,.01,.1);
-    if(guardSub){if(trySub(bot,t,rng.pick(SUBS_GUARD),.095)){/* finished */}}
-    else if(rng.next()<escape){
-     if(rng.next()<.42){top=bot;gpos=0;act(bot,'sweep','grapple');}else{pos='Stand-up';top=null;gpos=0;act(bot,'stand-up','grapple');}
-     spend(bot,1.4);spend(t,.8);
+    // Full guard permits a counter; bottom submissions become increasingly
+    // implausible in half-guard and impossible under side control, mount or back.
+    const positionalDefense=eff(t,'Ground Control')*.8+eff(t,'Takedowns')*.2;
+    const bottomMobility=eff(bot,'Ground Control')*.63+eff(bot,'Footwork')*.25+eff(bot,'Stamina')*.12;
+    const escapeBase=[.31,.235,.16,.07,.045][gpos]??.033;
+    const escape=contest(bottomMobility,positionalDefense,escapeBase);
+    const guardPressure=clamp(.35+(
+      eff(bot,'Submissions')*.5+eff(bot,'Ground Control')*.5-
+      eff(t,'Ground Control')*.65-eff(t,'Submissions')*.35)*.034,.035,1.15);
+    const guardChance=gpos<=1?
+      clamp(.012+(bot.sk.Submissions-80)*.0019,.003,.067)*guardPressure*(gpos===1?.3:1):0;
+    const guardSub=rng.next()<guardChance;
+    if(guardSub){
+     // A rare direct submission from guard. If it fails, the top player remains
+     // in control and may advance position on the following exchange.
+     trySub(bot,t,rng.pick(SUBS_GUARD),gpos===1?.055:.082,true);
+     spend(bot,.8);spend(t,.35);
+    }else if(rng.next()<escape){
+     const sweepChance=clamp(.23+(bottomMobility-positionalDefense)*.012,.09,.48);
+     if(rng.next()<sweepChance){top=bot;gpos=0;act(bot,'sweep','grapple');}
+     else{pos='Stand-up';top=null;gpos=0;act(bot,'stand-up','grapple');}
+     spend(bot,1.65+gpos*.24);spend(t,.60);
     }else{
-     // Top fighter: improve position, hunt the finish, or ground-and-pound.
-     const subChance=gpos>=2?clamp(.03+gpos*.025+(t.sk.Submissions-68)*.004,.015,.22):0;
-     if(rng.next()<subChance){trySub(t,bot,gpos===4?rng.pick(SUBS_BACK):rng.pick(SUBS_TOP),gpos===4?.21:gpos===3?.16:.11);}
-     else if(gpos<3&&rng.next()<contest(eff(t,'Ground Control'),eff(bot,'Ground Control'),.32)){
+     // Top control creates the route to mount/back, high-percentage attacks,
+     // and sustained pressure. Submissions require achieving position first.
+     const subChance=gpos>=2?clamp(.04+gpos*.028+(t.sk.Submissions-72)*.0035+
+       (eff(t,'Ground Control')-eff(bot,'Ground Control'))*.002,.018,.30)*.55:0;
+     if(rng.next()<subChance)trySub(t,bot,gpos===4?rng.pick(SUBS_BACK):rng.pick(SUBS_TOP),gpos===4?.24:gpos===3?.17:.10);
+     else if(gpos<3&&rng.next()<contest(eff(t,'Ground Control'),eff(bot,'Ground Control'),.35)){
       gpos++;
       if(gpos===2&&rng.next()<.25){gpos=4;act(t,'back-take','grapple');}
       else act(t,gpos===1?'half-guard':gpos===2?'guard-pass':'mount','grapple');
       if(gpos>=3&&rng.next()<.4)note(`${t.f.name} ${gpos===4?'takes the back':'climbs to full mount'}.`);
      }
      if(!winnerId)flurry(t,bot,1+rng.int(0,1)+(gpos>=2?1:0),'ground');
-     spend(t,.9);spend(bot,1.3);
+     spend(t,.6);spend(bot,1.15+gpos*.22);
     }
    }
+   // Baseline exertion and distance-management cost every exchange, even
+   // without attacks. Ground escapes and busy flurries add costs above this.
+   spend(x,.45);spend(y,.45);
    if(!winnerId){x.rocked=Math.max(0,x.rocked-1);y.rocked=Math.max(0,y.rocked-1);}
    if(record){
     const span=winnerId?Math.max(1,Number(finishTime.split(':')[0])*60+Number(finishTime.split(':')[1])-start):EX_SECONDS;
@@ -272,7 +329,12 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
   const med=(i:0|1)=>cards.map(c=>c[i]).sort((p,q)=>p-q)[1];
   // A stopped round is never scored by the judges.
   rounds.push({number:r,scoreA:winnerId?10:med(0),scoreB:winnerId?10:med(1),...(winnerId?{}:{cards}),a:x.round.map(Math.round),b:y.round.map(Math.round),staminaA:Math.round(x.energy),staminaB:Math.round(y.energy),notes,...(record?{timeline}:{})});
-  if(!winnerId){for(const c of both)c.energy=clamp(c.energy+9+c.sk.Stamina*.05,0,100);x.damage*=.92;y.damage*=.92;}
+  if(!winnerId){
+   // One-minute corner recovery: higher stamina recovers modestly more, but
+   // it cannot erase the cost of an unsustainably aggressive pace.
+   for(const c of both)c.energy=clamp(c.energy+5.5+c.sk.Stamina*.07,2,100);
+   x.damage*=.92;y.damage*=.92;
+  }
  }
  if(!winnerId){
   // Unscored rounds of a finished fight never reach the cards; a decision uses all rounds.
