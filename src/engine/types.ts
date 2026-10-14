@@ -21,7 +21,8 @@ export interface Fighter {fame:number;id:string;name:string;nickname:string;coun
 export type BeltId='WORLD'|'AMERICAS'|'EUROPE'|'AFRICA'|'APAC';
 /** title: regular or vacant title bout · interim: champion unavailable · unification: champion vs interim · eliminator: winner becomes mandatory challenger. */
 export type BoutKind='title'|'interim'|'unification'|'eliminator';
-export interface PendingFight {fighterA:string;fighterB:string;year:number;roundIndex:number;division:Division;titleFight:boolean;eventName:string;belt?:BeltId;kind?:BoutKind;}
+export interface PendingFight {fighterA:string;fighterB:string;year:number;roundIndex:number;division:Division;titleFight:boolean;eventName:string;belt?:BeltId;kind?:BoutKind;
+ /** World-tier bouts beyond the main card: resolved with the event, shown as prelim results. */prelim?:boolean;}
 export interface CrownReign {fighterId:string;startYear:number;startRound:number;startFightId:string;endYear?:number;endRound?:number;endFightId?:string;defenses:number;
  /** Set when an interim champion was elevated after the champion left. */via?:'interim';}
 export interface CrownState {championId:string|null;reigns:CrownReign[];
@@ -59,14 +60,20 @@ export interface Tournament {id:string;kind:TournamentKind;year:number;status:'a
 export interface IconicMoment {id:string;year:number;category:'Dynasty'|'Comeback'|'Upset'|'Double'|'Olympiad'|'Surge';score:number;title:string;description:string;subjectIds:string[];fightId?:string;}
 export interface SeasonAwards {year:number;fighterOfYear:string|null;breakthrough:string|null;fightOfYear:string|null;knockoutOfYear:string|null;submissionOfYear:string|null;upsetOfYear:string|null;}
 export interface HallInductee {fighterId:string;inductedYear:number;score:number;reason:string;}
-export interface World {version:'0.9.0';iconicMoments:IconicMoment[];awards:SeasonAwards[];hallOfFame:HallInductee[];tournaments:Tournament[];activeTournamentId:string|null;year:number;seed:number;rngState:number;nextId:number;fighters:Fighter[];events:WorldEvent[];seasons:SeasonSummary[];round:number;nextFightId:number;
+export interface World {version:'0.9.0';
+ /** 48 = four events a month. Saves without it use the old 60-event calendar and are converted on load. */
+ calendar?:48;iconicMoments:IconicMoment[];awards:SeasonAwards[];hallOfFame:HallInductee[];tournaments:Tournament[];activeTournamentId:string|null;year:number;seed:number;rngState:number;nextId:number;fighters:Fighter[];events:WorldEvent[];seasons:SeasonSummary[];round:number;nextFightId:number;
  /** Full-detail bouts of the CURRENT season only. */
  fights:Fight[];
  /** Every bout ever, compact, grouped by season year. Closed seasons are never mutated. */
  ledger:Record<number,LedgerEntry[]>;
  /** Title fights, tournament knockouts and award/iconic bouts kept in detail (no minute data) after their season closes. */
  keyFights:Record<number,Fight[]>;
- lastFightIds:string[];pendingFight:PendingFight|null;marqueeReservation?:{year:number;month:number;a:string;b:string;kind?:BoutKind}|null;
+ lastFightIds:string[];pendingFight:PendingFight|null;
+ /** The prepared world-tier card (S-Tier and Global D2), main event first. Unplayed until the event starts. */
+ pendingCard?:PendingFight[]|null;
+ /** Fight ids of the last world-tier card that was fought, main event first. */
+ lastCardIds?:string[];marqueeReservation?:{year:number;month:number;a:string;b:string;kind?:BoutKind}|null;
  /** The World Crown (S-Tier). */
  crown:CrownState;
  /** Continental belts, one per regional Division I. */

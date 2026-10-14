@@ -4,7 +4,7 @@ import {DIVISIONS,REGIONS,REGION_DIVISIONS,START_YEAR} from './constants';
 import {ageOf,baseOf,clamp,createFighter,foundingPlan,overallOf,planRookieRarities,regionDivision} from './career';
 import {Random} from './random';
 import {countryNamed} from './names';
-import {competitiveScore,pointsSeed,rankByCompetition,prepareCircuitRound,settleHeadliner,finishCircuitRound,ROUNDS_PER_YEAR,emptyRecord,recentForm} from './competition';
+import {competitiveScore,pointsSeed,rankByCompetition,prepareCircuitRound,settleCard,finishCircuitRound,ROUNDS_PER_YEAR,emptyRecord,recentForm,isBigEvent} from './competition';
 import {closeSeasonArchive,stripTimeline,toLedger,LF} from './archive';
 import {beltsHeld,BELT_DIVISION,CONTINENTAL_BELTS,emptyBelt,emptyBelts,FORM_MAX,pinChampionForm,protectedChampions,vacateBelt} from './belts';
 import type {Fighter,Division,Region,World,WorldEvent,SeasonSummary,CareerSnapshot,Fight,LedgerEntry} from './types';
@@ -22,7 +22,7 @@ function record(w:World,f:Fighter,event:string){const snapshot:CareerSnapshot={y
 function rankRoster(w:World) {rankByCompetition(w);}
 function event(w:World,f:Fighter,type:WorldEvent['type'],description:string) {w.events.push({year:w.year,type,fighterId:f.id,description});}
 export function createWorld(seed:number=20582058):World {
-  const rng=new Random(seed);const w:World={version:'0.9.0',ledger:{},keyFights:{},iconicMoments:[],awards:[],hallOfFame:[],tournaments:[],activeTournamentId:null,year:START_YEAR,seed,rngState:rng.state,nextId:1,fighters:[],events:[],seasons:[],round:0,nextFightId:1,fights:[],lastFightIds:[],pendingFight:null,marqueeReservation:null,crown:emptyBelt(),belts:emptyBelts(),beltReservations:null,user:{followed:[],picks:[],pendingPick:null}};
+  const rng=new Random(seed);const w:World={version:'0.9.0',calendar:48,ledger:{},keyFights:{},iconicMoments:[],awards:[],hallOfFame:[],tournaments:[],activeTournamentId:null,year:START_YEAR,seed,rngState:rng.state,nextId:1,fighters:[],events:[],seasons:[],round:0,nextFightId:1,fights:[],lastFightIds:[],pendingFight:null,marqueeReservation:null,crown:emptyBelt(),belts:emptyBelts(),beltReservations:null,user:{followed:[],picks:[],pendingPick:null}};
   const names=new Set<string>();
   for(const slot of foundingPlan(rng))w.fighters.push(createFighter(rng,w.nextId++,slot.region,slot.division,slot.rarity,w.year,names,{age:slot.age}));
   w.fighters.forEach(f=>{f.rankingPoints=pointsSeed(f,w.year);});
@@ -41,6 +41,15 @@ function summary(w:World,newcomers:number,retirements:number,promotions:number,r
  return {year:w.year,newcomers,retirements,promotions,relegations,fights:bouts,knockouts:kos,submissions:subs,
  averageAge:+(active.reduce((s,f)=>s+ageOf(f,w.year),0)/Math.max(1,active.length)).toFixed(1),
  sTierAverage:+(tier.reduce((s,f)=>s+overallOf(f,w.year),0)/Math.max(1,tier.length)).toFixed(1)};
+}
+/** Chance a continental champion chooses to step up to the global circuit. */
+export function promotionAmbition(f:Fighter,year:number){
+ const age=ageOf(f,year);
+ if(age<=25||f.rarity==='Generational'||f.rarity==='Legend')return 1;
+ if(age>=33)return f.rarity==='Epic'?.25:.03;
+ const base=f.rarity==='Epic'?.65:f.rarity==='Rare'?.3:.12;
+ const drive=f.mentality==='Bold'||f.mentality==='Crazy'?1.6:f.mentality==='Cold'?1:.8;
+ return clamp(base*drive,0,1);
 }
 function retireChance(f:Fighter,year:number) {
   const age=ageOf(f,year);if(age>=45)return 1;
@@ -67,8 +76,8 @@ function fill(w:World,target:Division,source:Division,minAge:number) {
     promote(w,pick,target,`Promoted from ${source} to ${target} to fill an opening`);
   }
 }
-function bestFromRegional(w:World) {
-  return REGIONS.flatMap(r=>roster(w,regionDivision(r,1))).filter(f=>ageOf(f,w.year)>=21).sort((a,b)=>readiness(b,w.year)-readiness(a,w.year))[0];
+function bestFromRegional(w:World,keep:Set<string>=new Set()) {
+  return REGIONS.flatMap(r=>roster(w,regionDivision(r,1))).filter(f=>ageOf(f,w.year)>=21&&!keep.has(f.id)).sort((a,b)=>readiness(b,w.year)-readiness(a,w.year))[0];
 }
 function swap(w:World,upper:Division,lower:Division,slots:number,minAge:number,margin:number){
   const swapped=new Set<string>();
@@ -90,7 +99,8 @@ function swapRegionalGlobal(w:World,slots:number) {
   for(let i=0;i<slots;i++){
     const potential=REGIONS.map(r=>{
       const upper=roster(w,'GLOBAL D2').filter(f=>f.region===r&&!used.has(f.id)).sort((a,b)=>readiness(a,w.year)-readiness(b,w.year))[0];
-      const lower=roster(w,regionDivision(r,1)).filter(f=>!used.has(f.id)&&ageOf(f,w.year)>=21).sort((a,b)=>readiness(b,w.year)-readiness(a,w.year))[0];
+      const champs=protectedChampions(w);
+      const lower=roster(w,regionDivision(r,1)).filter(f=>!used.has(f.id)&&!champs.has(f.id)&&ageOf(f,w.year)>=21).sort((a,b)=>readiness(b,w.year)-readiness(a,w.year))[0];
       return upper&&lower?{upper,lower,margin:readiness(lower,w.year)-readiness(upper,w.year)}:null;
     }).filter((x):x is {upper:Fighter;lower:Fighter;margin:number}=>Boolean(x));
     potential.sort((a,b)=>b.margin-a.margin);
@@ -137,7 +147,7 @@ function transitionYear(world:World,rng:Random):World {
     const age=ageOf(f,w.year);
     const ceiling=Math.round(clamp(86+rng.int(-4,7)-Math.max(0,age-35)*.55,76,96));
     f.condition=Math.min(ceiling,clamp(f.condition+rng.int(5,13),0,100));
-    if(f.injuryUntil>w.year*60)f.condition=Math.min(f.condition,39);
+    if(f.injuryUntil>w.year*ROUNDS_PER_YEAR)f.condition=Math.min(f.condition,39);
     // Reigning champions are less inclined to walk away.
     if(rng.next()<retireChance(f,w.year)*(beltsHeld(w,f.id).length?.5:1)) {
       f.status='retired';f.retiredYear=w.year;
@@ -145,10 +155,12 @@ function transitionYear(world:World,rng:Random):World {
       event(w,f,'retirement',`Retired at age ${age} with a record of ${f.record.wins}-${f.record.losses}-${f.record.draws}`);
     }
   }
-  // Continental champions earn promotion to the global circuit and relinquish their belt.
+  // Continental champions MAY move up to the global circuit, giving up their belt. Whether they do is their ambition:
+  // young climbers and elite talents go; established veterans usually stay home and defend.
   for(const belt of CONTINENTAL_BELTS){
    const holder=w.fighters.find(f=>f.id===w.belts[belt].championId);
    if(!holder||holder.status!=='active'||holder.division!==BELT_DIVISION[belt]||ageOf(holder,w.year)<21)continue;
+   if(rng.next()>=promotionAmbition(holder,w.year))continue;
    const out=roster(w,'GLOBAL D2').filter(f=>f.region===holder.region&&!protectedChampions(w).has(f.id)).sort((a,b)=>readiness(a,w.year)-readiness(b,w.year))[0];
    // Promotion needs an open place: a same-region swap or a vacancy on the global circuit.
    if(!out&&roster(w,'GLOBAL D2').length>=20)continue;
@@ -157,7 +169,7 @@ function transitionYear(world:World,rng:Random):World {
    promote(w,holder,'GLOBAL D2',`Promoted to the global circuit as ${belt.charAt(0)+belt.slice(1).toLowerCase()} continental champion`);
   }
   fill(w,'S-TIER','GLOBAL D2',24);
-  while(roster(w,'GLOBAL D2').length<20){const p=bestFromRegional(w);if(!p)break;promote(w,p,'GLOBAL D2','Advanced from continental Division I to the global circuit');}
+  while(roster(w,'GLOBAL D2').length<20){const p=bestFromRegional(w,protectedChampions(w));if(!p)break;promote(w,p,'GLOBAL D2','Advanced from continental Division I to the global circuit');}
   for(const r of REGIONS)fill(w,regionDivision(r,1),regionDivision(r,2),18);
   const names=new Set(w.fighters.map(f=>f.name));let count=0;
   const slots=REGIONS.flatMap(r=>Array<Region>(Math.max(0,20-roster(w,regionDivision(r,2)).length)).fill(r));
@@ -207,31 +219,36 @@ function cloneWorld(w:World):World{
   fights:[...w.fights],ledger:{...w.ledger,[w.year]:[...(w.ledger[w.year]||[])]},keyFights:{...w.keyFights},
   events:[...w.events],seasons:[...w.seasons],awards:[...w.awards],iconicMoments:[...w.iconicMoments],hallOfFame:[...w.hallOfFame],
   tournaments:w.tournaments.map(t=>t.status==='complete'?t:structuredClone(t)),
-  lastFightIds:[...w.lastFightIds],pendingFight:w.pendingFight&&{...w.pendingFight},marqueeReservation:w.marqueeReservation&&{...w.marqueeReservation},
+  lastFightIds:[...w.lastFightIds],lastCardIds:w.lastCardIds&&[...w.lastCardIds],pendingFight:w.pendingFight&&{...w.pendingFight},pendingCard:w.pendingCard&&w.pendingCard.map(p=>({...p})),marqueeReservation:w.marqueeReservation&&{...w.marqueeReservation},
   crown:structuredClone(w.crown),belts:structuredClone(w.belts),beltReservations:w.beltReservations&&structuredClone(w.beltReservations),
   user:w.user&&{...w.user,followed:[...w.user.followed],picks:[...w.user.picks]}};
 }
 /** The undercard completes now; the headliner remains genuinely unresolved. */
+export const hasPendingCard=(w:World)=>!!(w.pendingCard||w.pendingFight);
 export function prepareNextEvent(world:World):World {
- if(world.pendingFight||world.activeTournamentId)return world;
+ if(hasPendingCard(world)||world.activeTournamentId)return world;
  const w=cloneWorld(world);const rng=new Random(w.rngState);
  if(kindAt(w.year,w.round))beginTournament(w,rng);else prepareCircuitRound(w,rng);w.rngState=rng.state;
  return w;
 }
-/** Resolves and commits the featured fight, then moves to the next event. */
-function resolveInPlace(w:World):string|null {
+/** Fights the prepared card, then moves to the next event. Returns card fight ids, main event first. */
+function resolveInPlace(w:World,watch?:ReadonlySet<number>):string[] {
  const rng=new Random(w.rngState);
- const fight=settleHeadliner(w,rng);
+ const ids=settleCard(w,rng,watch);
  finishCircuitRound(w);
  if(w.round>=ROUNDS_PER_YEAR){w.seasons.pop();transitionYear(w,rng);}
  else{
   const last=w.seasons[w.seasons.length-1];
   if(last&&last.year===w.year)w.seasons[w.seasons.length-1]=summary(w,last.newcomers,last.retirements,last.promotions,last.relegations);
  }
- w.rngState=rng.state;return fight?.id||null;
+ w.rngState=rng.state;return ids;
 }
-export function resolveCurrentEvent(world:World):{world:World;fightId:string|null} {
- const w=cloneWorld(world);return {world:w,fightId:resolveInPlace(w)};
+/** Runs the prepared event. `watch` lists card positions the player chose to simulate live. */
+export function resolveCurrentEvent(world:World,watch:number[]=[0]):{world:World;fightId:string|null;fightIds:string[];cardIds:string[]} {
+ const w=cloneWorld(world);const card=w.pendingCard??(w.pendingFight?[w.pendingFight]:[]);
+ const mainIsReal=!!w.pendingFight&&card.length>0;
+ const ids=resolveInPlace(w,new Set(watch));
+ return {world:w,fightId:mainIsReal?ids[0]||null:null,fightIds:watch.slice().sort((a,b)=>b-a).map(i=>ids[i]).filter(Boolean),cardIds:ids.filter(Boolean)};
 }
 function refreshSeason(w:World):void{
  const last=w.seasons.at(-1);
@@ -260,7 +277,7 @@ export function resolveWholeTournament(world:World):World{
 }
 /** Mutate a private copy in bulk; do not clone a growing multi-decade archive every single event. */
 function advanceInPlace(w:World):void {
- if(w.activeTournamentId||kindAt(w.year,w.round)&&!w.pendingFight){
+ if(w.activeTournamentId||kindAt(w.year,w.round)&&!hasPendingCard(w)){
   const rng=new Random(w.rngState);
   if(!w.activeTournamentId)beginTournament(w,rng);
   finishTournament(w,rng);w.rngState=rng.state;
@@ -268,8 +285,20 @@ function advanceInPlace(w:World):void {
   if(last&&last.year===w.year)w.seasons[w.seasons.length-1]=summary(w,last.newcomers,last.retirements,last.promotions,last.relegations);
   return;
  }
- if(!w.pendingFight){const rng=new Random(w.rngState);prepareCircuitRound(w,rng);w.rngState=rng.state;}
- resolveInPlace(w);
+ if(!hasPendingCard(w)){const rng=new Random(w.rngState);prepareCircuitRound(w,rng);w.rngState=rng.state;}
+ resolveInPlace(w,new Set());
+}
+/** Skips every event up to the next big event of a month, then prepares it (or opens its tournament). */
+export function advanceToBigEvent(world:World):World{
+ const w=cloneWorld(world);
+ if(w.activeTournamentId){const rng=new Random(w.rngState);finishTournament(w,rng);w.rngState=rng.state;refreshSeason(w);}
+ // Already standing on an unplayed big event: play it and go to next month's.
+ if(isBigEvent(w.round)&&hasPendingCard(w))advanceInPlace(w);
+ let guard=0;
+ while(!isBigEvent(w.round)&&guard++<ROUNDS_PER_YEAR)advanceInPlace(w);
+ const rng=new Random(w.rngState);
+ if(kindAt(w.year,w.round))beginTournament(w,rng);else if(!hasPendingCard(w))prepareCircuitRound(w,rng);
+ w.rngState=rng.state;return w;
 }
 export function advanceRound(world:World):World {
  const w=cloneWorld(world);advanceInPlace(w);return w;
@@ -285,7 +314,7 @@ export function advanceYears(w:World,n:number):World {const state=cloneWorld(w),
 function validateLegacyWorld(x:unknown):x is World {
  if(!x||typeof x!=='object')return false;const w=x as World;
  return (x as {version?:string}).version==='0.6.0'&&Array.isArray(w.iconicMoments)&&Array.isArray(w.awards)&&Array.isArray(w.hallOfFame)&&Array.isArray(w.tournaments)&&
- (w.activeTournamentId===null||typeof w.activeTournamentId==='string')&&Number.isInteger(w.round)&&w.round>=0&&w.round<ROUNDS_PER_YEAR&&
+ (w.activeTournamentId===null||typeof w.activeTournamentId==='string')&&Number.isInteger(w.round)&&w.round>=0&&w.round<60&&
  Number.isInteger(w.nextFightId)&&Array.isArray(w.fights)&&!!w.crown&&Array.isArray(w.crown.reigns)&&
  (w.pendingFight===null||!!w.pendingFight&&typeof w.pendingFight.fighterA==='string')&&
  Number.isInteger(w.year)&&Number.isInteger(w.rngState)&&Number.isInteger(w.nextId)&&
@@ -374,11 +403,31 @@ function ensureCurrent(w:World):World{
  pinChampionForm(w);
  return w;
 }
+/* ───────────── 60 → 48 event calendar ─────────────
+   Old months had four circuit cards and a big event; new months have three and a big event.
+   Every stored calendar position (round, fight and ledger event index, reign boundaries,
+   injury clocks) is mapped: big event → big event, fourth circuit card → third. */
+const OLD_WEEKS=5,OLD_YEAR=60;
+const mapRound=(r:number)=>{const m=Math.floor(r/OLD_WEEKS),wk=r%OLD_WEEKS;return m*4+(wk===4?3:Math.min(wk,2));};
+const mapIndex=(i:number|undefined)=>i?mapRound(i-1)+1:i;
+const mapClock=(v:number)=>v?Math.floor(v/OLD_YEAR)*ROUNDS_PER_YEAR+mapRound(v%OLD_YEAR):v;
+function convertCalendar(w:World):World{
+ if(w.calendar===48)return w;
+ w.round=mapRound(Math.min(w.round,OLD_YEAR-1));
+ for(const f of w.fighters)f.injuryUntil=mapClock(f.injuryUntil||0);
+ for(const f of w.fights)f.roundIndex=mapIndex(f.roundIndex)!;
+ for(const list of Object.values(w.keyFights||{}))for(const f of list)f.roundIndex=mapIndex(f.roundIndex)!;
+ for(const list of Object.values(w.ledger||{}))for(const e of list)e.e=mapIndex(e.e)!;
+ for(const b of [w.crown,...Object.values(w.belts||{})])for(const r of [...(b.reigns||[]),...(b.interimReigns||[])]){r.startRound=mapIndex(r.startRound)!;if(r.endRound)r.endRound=mapIndex(r.endRound);}
+ if(w.pendingFight)w.pendingFight.roundIndex=w.round;
+ if(w.user)w.user.pendingPick=null;
+ w.calendar=48;return w;
+}
 export function upgradeWorld(raw:unknown):World|null {
- if(validateWorld(raw))return ensureCurrent(raw);
- if(validateLegacyWorld(raw))return ensureCurrent(initializeLegacy(migrateToLedger(raw)));
+ if(validateWorld(raw))return ensureCurrent(convertCalendar(raw));
+ if(validateLegacyWorld(raw))return ensureCurrent(convertCalendar(initializeLegacy(migrateToLedger(raw))));
  const migrated=migrateV05(raw)||migrateV04(raw)||migrateV03(raw)||migrateV02(raw)||migrateLegacy(raw);
- return migrated?ensureCurrent(initializeLegacy(migrateToLedger(migrated))):null;
+ return migrated?ensureCurrent(convertCalendar(initializeLegacy(migrateToLedger(migrated)))):null;
 }
 export function loadWorld():World {try{
  for(const key of [STORAGE_KEY,V05_STORAGE_KEY,V04_STORAGE_KEY,PREVIOUS_STORAGE_KEY,OLD_STORAGE_KEY,LEGACY_STORAGE_KEY]){

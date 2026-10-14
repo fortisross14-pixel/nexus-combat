@@ -1,4 +1,6 @@
 import {useMemo,useState} from 'react';
+import {rankText} from './ui';
+import {Flag} from './Flag';
 import {Crown,Search,Star,X} from 'lucide-react';
 import {Avatar} from './Avatar';
 import type {Fighter,World} from '../engine/types';
@@ -29,7 +31,7 @@ export function TaleOfTheTape({world,a,b,rounds=3,onFighter,onFight,compact=fals
   compare('Overall',overallOf(a,year),overallOf(b,year),String),
   {label:'Base · form',a:`${baseOf(a,year)} · ${a.shape>=0?'+':''}${a.shape}`,b:`${baseOf(b,year)} · ${b.shape>=0?'+':''}${b.shape}`,better:null},
   compare('Condition',a.condition,b.condition,String),
-  {label:'Rank',a:a.status==='active'?`#${a.rank} ${a.division}`:'Retired',b:b.status==='active'?`#${b.rank} ${b.division}`:'Retired',better:null},
+  {label:'Rank',a:a.status==='active'?`${rankText(a.rank)} ${a.division}`:'Retired',b:b.status==='active'?`${rankText(b.rank)} ${b.division}`:'Retired',better:null},
   compare('Age',ageOf(a,year),ageOf(b,year),String,false),
   compare('Height',a.height,b.height,x=>`${x} cm`),
   compare('Reach',a.reach,b.reach,x=>`${x} cm`),
@@ -53,7 +55,7 @@ export function TaleOfTheTape({world,a,b,rounds=3,onFighter,onFight,compact=fals
  ];
  const factor=(label:string,v:number)=>Math.abs(v)<.05?null:<li key={label}><span>{label}</span><b className={v>0?'tape-a':'tape-b'}>{v>0?a.name.split(' ').at(-1):b.name.split(' ').at(-1)} +{one(Math.abs(v))}</b></li>;
  const Side=({f,belts,form}:{f:Fighter;belts:ReturnType<typeof beltsHeld>;form:ReturnType<typeof recentResults>})=><button className="tape-side" onClick={()=>onFighter?.(f.id)}>
-  <Avatar fighter={f} size={compact?84:112}/><strong>{f.name}</strong><small>{f.flag} {f.country} · {f.style}</small>
+  <Avatar fighter={f} size={compact?84:112}/><strong>{f.name}</strong><small><Flag code={f.flag}/> {f.country} · {f.style}</small>
   {belts.length>0&&<span className="tape-belts">{belts.map(bt=><i key={bt}><Crown size={11}/> {BELT_SHORT[bt]}</i>)}</span>}
   <span className="tape-form">{form.length?form.map((x,i)=><i key={i} className={`form-${x.result}`} title={headlineOf(world,x.entry)}>{x.result}</i>):<em>No bouts yet</em>}</span>
  </button>;
@@ -80,7 +82,7 @@ export function CompareDialog({world,fighter,onClose,onFighter,onFight,initialOp
  return <div className="tape-backdrop" onClick={onClose}><section className="tape-dialog" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Compare fighters">
   <header><span><Star size={14}/> COMPARE · {fighter.name}</span><button onClick={onClose} aria-label="Close comparison"><X size={19}/></button></header>
   {!other?<div className="tape-picker"><label><Search size={16}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} placeholder="Find an opponent by name, nation, style or division"/></label>
-   <div className="tape-options">{options.map(f=><button key={f.id} onClick={()=>setOtherId(f.id)}><Avatar fighter={f} size={38}/><span><b>{f.name}</b><small>{f.flag} {f.division} #{f.rank} · {f.style}</small></span><em>{overallOf(f,world.year)}</em></button>)}</div></div>
+   <div className="tape-options">{options.map(f=><button key={f.id} onClick={()=>setOtherId(f.id)}><Avatar fighter={f} size={38}/><span><b>{f.name}</b><small><Flag code={f.flag}/> {f.division} {rankText(f.rank)} · {f.style}</small></span><em>{overallOf(f,world.year)}</em></button>)}</div></div>
   :<><button className="tape-change" onClick={()=>setOtherId(null)}>← Choose another opponent</button><TaleOfTheTape world={world} a={fighter} b={other} rounds={rounds} onFighter={id=>{onClose();onFighter(id);}} onFight={onFight}/></>}
  </section></div>;
 }

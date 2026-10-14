@@ -9,10 +9,11 @@ export const BELT_NAMES:Record<BeltId,string>={WORLD:'World Crown',AMERICAS:'Ame
 export const BELT_SHORT:Record<BeltId,string>={WORLD:'World Crown',AMERICAS:'Americas belt',EUROPE:'Europe belt',AFRICA:'Africa belt',APAC:'APAC belt'};
 
 /* ───────────── Calendar ─────────────
+   48 events a year, four per month (three circuit cards, then the big event).
    World Crown: FIGHTOPIA (Mar), FAULTLINE (Jun) and THE PINNACLE (Dec), every year.
-   Continental title nights: the fourth circuit card of Feb, May, Aug and Nov. */
-export const WORLD_TITLE_ROUNDS=[14,29,59] as const;
-export const CONTINENTAL_ROUNDS=[8,23,38,53] as const;
+   Continental title nights: the third circuit card of Feb, May, Aug and Nov. */
+export const WORLD_TITLE_ROUNDS=[11,23,47] as const;
+export const CONTINENTAL_ROUNDS=[6,18,30,42] as const;
 export const isWorldTitleRound=(round:number)=>(WORLD_TITLE_ROUNDS as readonly number[]).includes(round);
 export const isContinentalRound=(round:number)=>(CONTINENTAL_ROUNDS as readonly number[]).includes(round);
 

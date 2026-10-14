@@ -23,22 +23,22 @@ function rosterInvariant(w:World){
 }
 
 describe('NEXUS v0.6 — calendar, medical system, title longevity and rarity',()=>{
- it('sets five events every month, with 12 top events and annual/quadrennial tournaments',()=>{
-  expect(ROUNDS_PER_YEAR).toBe(60);
-  expect(CALENDAR).toHaveLength(60);
+ it('sets four events every month: three circuit cards, then the big event',()=>{
+  expect(ROUNDS_PER_YEAR).toBe(48);
+  expect(CALENDAR).toHaveLength(48);
   for(let m=0;m<12;m++){
-   const cards=CALENDAR.slice(m*5,m*5+5);
-   expect(cards.slice(0,4).every(c=>c.week<5)).toBe(true);
-   expect(cards[4].week).toBe(5);
+   const cards=CALENDAR.slice(m*4,m*4+4);
+   expect(cards.slice(0,3).every(c=>c.kind==='circuit')).toBe(true);
+   expect(cards[3].kind).toBe('major');
    expect(new Set(cards.map(c=>c.month)).size).toBe(1);
   }
-  expect(CALENDAR[14].name).toBe('FIGHTOPIA');
-  expect(CALENDAR[29].name).toBe('FAULTLINE');
-  expect(CALENDAR[59].name).toBe('THE PINNACLE');
-  expect(kindAt(2058,34)).toBe('SURGE');
-  expect(kindAt(2058,39)).toBe(null);
-  expect(kindAt(2060,39)).toBe('OLYMPIAD');
-  expect(kindAt(2058,54)).toBe('CRUCIBLE');
+  expect(CALENDAR[11].name).toBe('FIGHTOPIA');
+  expect(CALENDAR[23].name).toBe('FAULTLINE');
+  expect(CALENDAR[47].name).toBe('THE PINNACLE');
+  expect(kindAt(2058,27)).toBe('SURGE');
+  expect(kindAt(2058,31)).toBe(null);
+  expect(kindAt(2060,31)).toBe('OLYMPIAD');
+  expect(kindAt(2058,43)).toBe('CRUCIBLE');
  });
  it('generates 200 distinct careers, six development patterns, nine centered skills',()=>{
   const w=createWorld(41);rosterInvariant(w);
@@ -62,15 +62,15 @@ describe('NEXUS v0.6 — calendar, medical system, title longevity and rarity',(
  });
  it('inaugurates the Crown at Fightopia and defends at Faultline and The Pinnacle',()=>{
   let w=createWorld(88);
-  for(let i=0;i<14;i++)w=advanceRound(w);
-  expect(w.round).toBe(14);expect(w.crown.championId).toBeNull();
+  for(let i=0;i<11;i++)w=advanceRound(w);
+  expect(w.round).toBe(11);expect(w.crown.championId).toBeNull();
   w=prepareNextEvent(w);expect(w.pendingFight?.titleFight).toBe(true);
   w=resolveCurrentEvent(w).world;
   expect(w.crown.reigns).toHaveLength(1);
   expect(w.crown.reigns[0].startFightId).toBe(w.fights.find(f=>f.titleChange&&f.belt==='WORLD')?.id);
-  for(let i=15;i<60;i++)w=advanceRound(w);
+  for(let i=12;i<48;i++)w=advanceRound(w);
   expect(w.year).toBe(2059);expect(w.round).toBe(0);
-  expect(w.ledger[2058].filter(isWorldTitle).map(e=>e.e)).toEqual([15,30,60]);
+  expect(w.ledger[2058].filter(isWorldTitle).map(e=>e.e)).toEqual([12,24,48]);
   expect(ledgerFor(w,e=>isWorldTitle(e)&&!!(e.f&LF.CHANGE)).length).toBe(w.crown.reigns.filter(r=>!r.via).length);
   // Title fights stay in detail after the season closes; minute-by-minute data does not.
   expect(w.keyFights[2058].filter(f=>f.titleFight&&f.belt==='WORLD')).toHaveLength(3);
@@ -83,7 +83,7 @@ describe('NEXUS v0.6 — calendar, medical system, title longevity and rarity',(
   const bouts=w.ledger[2058].filter(e=>!e.t);
   expect(bouts.length).toBeGreaterThan(950);expect(bouts.length).toBeLessThan(1300);
   for(let month=0;month<12;month++){
-   const monthBouts=bouts.filter(e=>Math.floor((e.e-1)/5)===month);
+   const monthBouts=bouts.filter(e=>Math.floor((e.e-1)/4)===month);
    expect(monthBouts.length).toBeGreaterThan(65);
    expect(monthBouts.length).toBeLessThanOrEqual(115);
   }
@@ -93,7 +93,7 @@ describe('NEXUS v0.6 — calendar, medical system, title longevity and rarity',(
   }
  });
  it('links medical suspensions to real injuries and measures them in weeks',()=>{
-  let w=advanceYears(createWorld(87),2);for(let i=0;i<59;i++)w=advanceRound(w);
+  let w=advanceYears(createWorld(87),2);for(let i=0;i<47;i++)w=advanceRound(w);
   const injured=w.fights.filter(f=>f.injuries?.length);
   expect(injured.length).toBeGreaterThan(20);
   for(const bout of injured){
@@ -124,7 +124,7 @@ describe('NEXUS v0.6 — calendar, medical system, title longevity and rarity',(
   expect(o[0].matches.filter(m=>m.stage==='Prelim')).toHaveLength(8);
  });
  it('does not reveal tournament future bracket results before advancing',()=>{
-  let w=createWorld(45);for(let i=0;i<54;i++)w=advanceRound(w);
+  let w=createWorld(45);for(let i=0;i<43;i++)w=advanceRound(w);
   w=prepareNextEvent(w);const gp=w.tournaments.at(-1)!;
   expect(gp.kind).toBe('CRUCIBLE');expect(gp.matches).toHaveLength(12);
   expect(gp.matches.every(m=>!m.fightId)).toBe(true);
@@ -154,10 +154,10 @@ describe('NEXUS v0.6 — calendar, medical system, title longevity and rarity',(
  it('migrates older saved worlds without changing historical winners',()=>{
   const w=advanceRound(createWorld(81));const raw=JSON.parse(JSON.stringify(w));
   raw.version='0.5.0';raw.round=0;raw.fights.forEach((f:{roundIndex:number})=>f.roundIndex=1);
-  delete raw.ledger;delete raw.keyFights;
+  delete raw.ledger;delete raw.keyFights;delete raw.calendar;
   const migrated=upgradeWorld(raw)!;
   expect(validateWorld(migrated)).toBe(true);
-  expect(migrated.round).toBe(4);
+  expect(migrated.round).toBe(3);
   expect(migrated.fights.map(f=>f.winnerId)).toEqual(w.fights.map(f=>f.winnerId));
   expect(migrated.ledger[2058].map(e=>e.w)).toEqual(w.fights.map(f=>f.winnerId));
   expect(migrateV05(raw)).not.toBeNull();
@@ -239,7 +239,7 @@ describe('NEXUS v0.9 — belts and title schedule',()=>{
   for(let y=2058;y<2070;y++){
    const titles=w.ledger[y].filter(isWorldTitle);
    expect(titles.length,`${y}`).toBeGreaterThanOrEqual(2);
-   expect(titles.every(e=>[15,30,60].includes(e.e)),`${y}`).toBe(true);
+   expect(titles.every(e=>[12,24,48].includes(e.e)),`${y}`).toBe(true);
   }
   // Holding any belt means fighting only for belts (tournaments aside).
   const holding=(id:string,y:number,e:number)=>[w.crown,...Object.values(w.belts)].some(b=>b.reigns.some(r=>r.fighterId===id&&(r.startYear<y||r.startYear===y&&r.startRound<e)&&(r.endYear===undefined||r.endYear>y||r.endYear===y&&(r.endRound??0)>e)));
@@ -252,7 +252,7 @@ describe('NEXUS v0.9 — belts and title schedule',()=>{
    const b=w.belts[belt];
    expect(b.reigns.length,belt).toBeGreaterThan(0);
    const nights=ledgerFor(w,e=>e.bt===belt);
-   expect(nights.every(e=>[9,24,39,54].includes(e.e)&&e.d===BELT_DIVISION[belt])).toBe(true);
+   expect(nights.every(e=>[7,19,31,43].includes(e.e)&&e.d===BELT_DIVISION[belt])).toBe(true);
    if(b.championId){const holder=w.fighters.find(f=>f.id===b.championId)!;expect(holder.division).toBe(BELT_DIVISION[belt]);}
   }
   expect(w.events.some(e=>e.type==='vacancy'&&e.description.includes('promoted to the global circuit'))).toBe(true);

@@ -12,8 +12,8 @@ export interface Rivalry {a:string;b:string;meetings:number;winsA:number;winsB:n
 export interface LegacyView {fighters:FighterLegacy[];rivalries:Rivalry[];byFighter:Map<string,FighterLegacy>;}
 const key=(a:string,b:string)=>a<b?`${a}|${b}`:`${b}|${a}`;
 const isFinish=(m:LedgerEntry['m'])=>m==='KO'||m==='TKO'||m==='SUB';
-// A title reign is timed by the 60-slot calendar (five cards per month).
-function dateIndex(year:number,round:number){return Math.round(year*365.2425+(Math.max(0,round-1)/60)*365.2425);}
+// A title reign is timed by the 48-slot calendar (four cards per month).
+function dateIndex(year:number,round:number){return Math.round(year*365.2425+(Math.max(0,round-1)/48)*365.2425);}
 export function reignDuration(w:World,reign:World['crown']['reigns'][number]){
  return Math.max(0,dateIndex(reign.endYear??w.year,reign.endRound??Math.max(1,w.round))-dateIndex(reign.startYear,reign.startRound));
 }

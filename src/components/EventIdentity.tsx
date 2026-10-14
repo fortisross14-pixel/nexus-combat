@@ -58,5 +58,5 @@ export function EventLogo({id,size=44,title}:{id:EventIdentity;size?:number;titl
 }
 /** Event name set in the event's own wordmark style. */
 export function EventWordmark({id,children,className=''}:{id:EventIdentity;children?:ReactNode;className?:string}){
- return <span className={`event-wordmark ${className}`} style={{letterSpacing:`${id.tracking/22}em`,fontStyle:id.italic?'italic':'normal',background:`linear-gradient(90deg,${id.ink},${id.primary} 55%,${id.secondary})`,WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}>{children??id.title}</span>;
+ return <span className={`event-wordmark ${className}`} style={{letterSpacing:`${id.tracking/22}em`,fontStyle:id.italic?'italic':'normal',background:`linear-gradient(90deg,${id.ink},${id.primary} 55%,${id.secondary})`,WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent',WebkitTextFillColor:'transparent'}}>{children??id.title}</span>;
 }

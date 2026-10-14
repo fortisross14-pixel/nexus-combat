@@ -1,15 +1,14 @@
 import {abilitiesOf,ageOf,clamp,overallOf} from './career';
 import {Random} from './random';
-import {resolveTournamentBout} from './competition';
+import {resolveTournamentBout,CLOCK,SURGE_ROUND,OLYMPIAD_ROUND,CRUCIBLE_ROUND} from './competition';
 import {FORM_MAX,pinChampionForm} from './belts';
 import type {Fighter,World,Tournament,TournamentKind,TournamentMatch} from './types';
 
-export const SPECIAL_SLOTS={34:'SURGE',54:'CRUCIBLE',39:'OLYMPIAD'} as const;
 export const isOlympiadYear=(year:number)=>year%4===0;
 export function kindAt(year:number,round:number):TournamentKind|null{
- if(round===34)return 'SURGE';
- if(round===39&&isOlympiadYear(year))return 'OLYMPIAD';
- return round===54?'CRUCIBLE':null;
+ if(round===SURGE_ROUND)return 'SURGE';
+ if(round===OLYMPIAD_ROUND&&isOlympiadYear(year))return 'OLYMPIAD';
+ return round===CRUCIBLE_ROUND?'CRUCIBLE':null;
 }
 export const eventNameAt=(year:number,round:number)=>kindAt(year,round)==='OLYMPIAD'?'WORLD COMBAT OLYMPIAD':kindAt(year,round)==='SURGE'?'THE SURGE':kindAt(year,round)==='CRUCIBLE'?'THE CRUCIBLE':null;
 export function nextTournamentKind(w:World):TournamentKind|null{return kindAt(w.year,w.round);}
@@ -28,7 +27,7 @@ export function beginTournament(w:World,rng:Random):Tournament{
  if(w.activeTournamentId)throw Error('A tournament is already active');
  // A tournament occupies a calendar slot just like a regular fight card, so participants
  // also receive realistic recovery between events, without curing active injuries.
- const now=w.year*60+w.round;
+ const now=CLOCK(w.year,w.round);
  for(const f of w.fighters.filter(f=>f.status==='active')){
   const ceiling=Math.round(clamp(83+rng.int(-4,7)-Math.max(0,ageOf(f,w.year)-35)*.65,68,95));
   f.condition=Math.min(ceiling,clamp(f.condition+rng.int(3,7),0,100));
@@ -133,9 +132,9 @@ export function advanceTournamentBout(w:World,rng:Random):string|null{
  if(t.kind==='SURGE'){advanceSurge(w,rng,t);if(t.winnerId!==null)awardWinner(w,t);return null;}
  const m=pendingTournamentMatch(t);if(!m)throw Error('No pending tournament matchup');
  const a=w.fighters.find(f=>f.id===m.fighterA)!,b=w.fighters.find(f=>f.id===m.fighterB)!;
- if(a.condition<40||b.condition<40||a.injuryUntil>w.year*60+w.round||b.injuryUntil>w.year*60+w.round){
+ if(a.condition<40||b.condition<40||a.injuryUntil>CLOCK(w.year,w.round)||b.injuryUntil>CLOCK(w.year,w.round)){
   // Explicit medical withdrawal; no imaginary fight, no damage to regular records.
-  const now=w.year*60+w.round,fit=(f:Fighter)=>f.condition>=40&&f.injuryUntil<=now;
+  const now=CLOCK(w.year,w.round),fit=(f:Fighter)=>f.condition>=40&&f.injuryUntil<=now;
   const winner=fit(a)?a:fit(b)?b:t.participants.indexOf(a.id)<t.participants.indexOf(b.id)?a:b;
   m.winnerId=winner.id;m.fightId=`walkover-${m.id}`;ensureNextStage(t);
   if(t.winnerId!==null)awardWinner(w,t);
@@ -143,7 +142,7 @@ export function advanceTournamentBout(w:World,rng:Random):string|null{
  }
  const fight=resolveTournamentBout(w,rng,m.fighterA,m.fighterB,t.id,m.stage,t.kind==='OLYMPIAD'||!m.stage.startsWith('Group'));
  // Overnight short-format recovery between tournament bouts, still leaving stamina meaningful.
- for(const fighter of [a,b])if(fighter.injuryUntil<=w.year*60+w.round)fighter.condition=Math.min(Math.max(fighter.condition,86),fighter.condition+3);
+ for(const fighter of [a,b])if(fighter.injuryUntil<=CLOCK(w.year,w.round))fighter.condition=Math.min(Math.max(fighter.condition,86),fighter.condition+3);
  m.fightId=fight.id;m.winnerId=fight.winnerId;
  // Tournament matches don't generate regular ranking-point inflation or artificially add wins to circuit records.
  ensureNextStage(t);
@@ -168,7 +167,7 @@ function advanceSurge(w:World,rng:Random,t:Tournament){
   active.splice(active.indexOf(eliminatedId),1);
  }
  moments.push({wave:moments.length+1,entrantId,eliminatedId,byId,remaining:[...active]});
- if(moments.length>=order.length&&active.length===1){t.winnerId=active[0];t.status='complete';}
+ if(moments.length>=order.length&&active.length===1){t.winnerId=active[0];t.runnerUpId=eliminatedId??undefined;t.status='complete';}
 }
 /** Resolves all matches while retaining only the already-earned bracket outcomes and records. */
 export function finishTournament(w:World,rng:Random){

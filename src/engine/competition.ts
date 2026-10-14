@@ -6,8 +6,8 @@ import {addCareer,recordFight} from './archive';
 import {applyBoutResult,pinChampionForm,FORM_MAX,BELT_DIVISION,BELT_REGION,CONTINENTAL_BELTS,isContinentalRound,isWorldTitleRound,protectedChampions,type ContinentalBelt} from './belts';
 import type {BeltId,BoutKind,Division,Fight,Fighter,LedgerEntry,PendingFight,World} from './types';
 
-/** Five events in each of twelve months: four weekly circuit cards plus a marquee.
-    Tournament marquee slots remain part of the 60-event calendar. */
+/** Four events in each of twelve months: three weekly circuit cards, then the month's big event.
+    Tournaments take the big-event slot of their month. 48 events a year. */
 export const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'] as const;
 const MARQUEES=[
  {name:'ORIGIN',label:'Season opener · title eliminator',title:false},
@@ -23,31 +23,49 @@ const MARQUEES=[
  {name:'THE CRUCIBLE',label:'Grand Prix',title:false},
  {name:'THE PINNACLE',label:'The ultimate World Crown main event',title:true}
 ];
-export const CALENDAR=MONTHS.flatMap((month,mi)=>Array.from({length:5},(_,wi)=>wi===4?
- {...MARQUEES[mi],month,kind:'major' as const,week:5,monthIndex:mi}:
- {name:`CIRCUIT ${String(wi+1).padStart(2,'0')}`,month,label:`${month} / Week ${wi+1}${wi===3&&mi%3===1?' · Continental title night':''}`,kind:'circuit' as const,title:false,week:wi+1,monthIndex:mi}));
+export const WEEKS=4;
+export const CALENDAR=MONTHS.flatMap((month,mi)=>Array.from({length:WEEKS},(_,wi)=>wi===WEEKS-1?
+ {...MARQUEES[mi],month,kind:'major' as const,week:WEEKS,monthIndex:mi}:
+ {name:`CIRCUIT ${String(wi+1).padStart(2,'0')}`,month,label:`${month} / Week ${wi+1}${wi===2&&mi%3===1?' · Continental title night':''}`,kind:'circuit' as const,title:false,week:wi+1,monthIndex:mi}));
 export const ROUNDS_PER_YEAR=CALENDAR.length;
-export const ROUND_NAMES=CALENDAR.map(e=>`${e.name} · ${e.month}${e.week<5?` W${e.week}`:''}`);
-export const MONTH_OF=(round:number)=>Math.floor(round/5);
-export const WEEK_OF=(round:number)=>round%5;
+export const ROUND_NAMES=CALENDAR.map(e=>`${e.name} · ${e.month}${e.kind!=='major'?` W${e.week}`:''}`);
+export const MONTH_OF=(round:number)=>Math.floor(round/WEEKS);
+export const WEEK_OF=(round:number)=>round%WEEKS;
+/** Index of the month's big event. */
+export const BIG_OF=(month:number)=>month*WEEKS+WEEKS-1;
+export const isBigEvent=(round:number)=>WEEK_OF(round)===WEEKS-1;
 export const CLOCK=(year:number,round:number)=>year*ROUNDS_PER_YEAR+round;
-export const isTournamentSlot=(year:number,round:number)=>round===34||round===54||round===39&&year%4===0;
+export const SURGE_ROUND=BIG_OF(6),OLYMPIAD_ROUND=BIG_OF(7),CRUCIBLE_ROUND=BIG_OF(10);
+export const isTournamentSlot=(year:number,round:number)=>round===SURGE_ROUND||round===CRUCIBLE_ROUND||round===OLYMPIAD_ROUND&&year%4===0;
 export const emptyRecord=()=>({wins:0,losses:0,draws:0,kos:0,submissions:0,decisions:0,streak:0,longestWinStreak:0});
 export function pointsSeed(f:Fighter,year:number){return Math.round(clamp(1250+(overallOf(f,year)-72)*11+(f.condition-80)*.2,850,2050));}
 
-/** Net wins over the last twelve months (60 events), per fighter. Circuit bouts only. */
+/** Net wins over the last twelve months, per fighter. Circuit bouts only. */
 export function recentForm(w:World):Map<string,number>{
  const now=CLOCK(w.year,w.round),form=new Map<string,number>();
  for(const y of [w.year-1,w.year])for(const e of w.ledger[y]||[]){
-  if(e.t||now-CLOCK(e.y,e.e-1)>60||!e.w)continue;
+  if(e.t||now-CLOCK(e.y,e.e-1)>ROUNDS_PER_YEAR||!e.w)continue;
   const l=e.w===e.a?e.b:e.a;form.set(e.w,(form.get(e.w)||0)+1);form.set(l,(form.get(l)||0)-1);
  }
  return form;
 }
 /** Current competitive level: ability, capped recent form and ranking points. Lifetime record no longer counts. */
 export function competitiveScore(f:Fighter,year:number,form=0){return overallOf(f,year)+clamp(form,-6,6)*.6+clamp((f.rankingPoints-1250)*.012,-5,6);}
+/** The belt holder of a division, if it has a belt (World Crown for S-Tier, continental belts for regional Division I). */
+export function divisionChampionId(w:World,d:Division):string|null{
+ if(d==='S-TIER')return w.crown?.championId??null;
+ const belt=(Object.keys(BELT_DIVISION) as BeltId[]).find(b=>b!=='WORLD'&&BELT_DIVISION[b]===d) as ContinentalBelt|undefined;
+ return belt?w.belts?.[belt]?.championId??null:null;
+}
+/** Ranking: a division's champion is listed as C (rank 0); contenders are ranked 1, 2, 3… behind them. */
 export function rankByCompetition(w:World){
- for(const d of DIVISIONS)w.fighters.filter(f=>f.status==='active'&&f.division===d).sort((a,b)=>b.rankingPoints-a.rankingPoints||b.record.wins-a.record.wins||a.id.localeCompare(b.id)).forEach((f,i)=>f.rank=i+1);
+ for(const d of DIVISIONS){
+  const champ=divisionChampionId(w,d);
+  const list=w.fighters.filter(f=>f.status==='active'&&f.division===d).sort((a,b)=>b.rankingPoints-a.rankingPoints||b.record.wins-a.record.wins||a.id.localeCompare(b.id));
+  const holder=list.find(f=>f.id===champ);
+  if(holder){holder.rank=0;list.filter(f=>f!==holder).forEach((f,i)=>f.rank=i+1);}
+  else list.forEach((f,i)=>f.rank=i+1);
+ }
 }
 type RivalStats=Map<string,{count:number;last:number}>;
 const pairKey=(a:string,b:string)=>a<b?`${a}|${b}`:`${b}|${a}`;
@@ -61,19 +79,19 @@ function buildRivalIndex(w:World):RivalStats {
 function rivalsPenalty(a:Fighter,b:Fighter,w:World,index:RivalStats){
  const entry=index.get(pairKey(a.id,b.id));if(!entry)return 0;
  const elapsed=CLOCK(w.year,w.round)-entry.last;
- return elapsed<=30?200:elapsed<=60?30:entry.count>=3?25:8;
+ return elapsed<=ROUNDS_PER_YEAR/2?200:elapsed<=ROUNDS_PER_YEAR?30:entry.count>=3?25:8;
 }
 /** A healthy fighter is allocated ONE circuit bout each month. Injured/unfit
     athletes are medically exempt; nobody is pushed into a second bout to fill a card.
     Four earlier weekly cards absorb the quota in months with special-event finales. */
 export function scheduleDivision(w:World,division:Division,rng:Random,index:RivalStats=buildRivalIndex(w),reserved:Set<string>=new Set()):[string,string][]{
- const now=CLOCK(w.year,w.round),start=MONTH_OF(w.round)*5+1;
+ const now=CLOCK(w.year,w.round),start=MONTH_OF(w.round)*WEEKS+1;
  const fought=new Set<string>();
  for(let i=w.fights.length-1;i>=0;i--){const f=w.fights[i];if(f.year!==w.year||f.roundIndex<start)break;
   fought.add(f.fighterA);fought.add(f.fighterB);
  }
- const monthlyFinale=(MONTH_OF(w.round)+1)*5-1;
- const remainingEvents=isTournamentSlot(w.year,monthlyFinale)?Math.max(1,4-WEEK_OF(w.round)):Math.max(1,5-WEEK_OF(w.round));
+ const monthlyFinale=BIG_OF(MONTH_OF(w.round));
+ const remainingEvents=isTournamentSlot(w.year,monthlyFinale)?Math.max(1,WEEKS-1-WEEK_OF(w.round)):Math.max(1,WEEKS-WEEK_OF(w.round));
  const available=w.fighters.filter(f=>f.status==='active'&&f.division===division&&f.condition>=60&&f.injuryUntil<=now&&!fought.has(f.id)&&!reserved.has(f.id));
  const pairs:[string,string][]=[];
  const quota=Math.ceil(available.length/(remainingEvents*2));
@@ -89,7 +107,7 @@ export function scheduleDivision(w:World,division:Division,rng:Random,index:Riva
  // An odd-sized healthy roster can leave one eligible fighter unmatched.
  // Give that fighter a bout with a recovered athlete whose first monthly fight
  // occurred at least two event-weeks ago, rather than silently skipping them.
- const finalCircuitEvent=isTournamentSlot(w.year,monthlyFinale)?WEEK_OF(w.round)===3:WEEK_OF(w.round)===4;
+ const finalCircuitEvent=isTournamentSlot(w.year,monthlyFinale)?WEEK_OF(w.round)===WEEKS-2:WEEK_OF(w.round)===WEEKS-1;
  if(finalCircuitEvent&&unpaired.size===1){
   const lone=w.fighters.find(f=>f.id===[...unpaired][0])!;
   const justNow=new Set<string>();
@@ -195,7 +213,7 @@ export function recover(w:World,rng:Random){
 type Booking={a:string;b:string;kind?:BoutKind};
 /** Fighters who already competed this month. */
 function bookedThisMonth(w:World){
- const booked=new Set<string>(),monthStart=MONTH_OF(w.round)*5+1;
+ const booked=new Set<string>(),monthStart=MONTH_OF(w.round)*WEEKS+1;
  for(let i=w.fights.length-1;i>=0;i--){const f=w.fights[i];if(f.year!==w.year||f.roundIndex<monthStart)break;booked.add(f.fighterA);booked.add(f.fighterB);}
  return booked;
 }
@@ -209,7 +227,7 @@ function bestOpponent(w:World,a:Fighter,pool:Fighter[],index:RivalStats,rng:Rand
 }
 /** The World Crown marquee for this month: a title bout in title months, otherwise a title eliminator. */
 function bookWorldMarquee(w:World,rng:Random,index:RivalStats,booked:Set<string>):Booking|null{
- const c=w.crown,slot=MONTH_OF(w.round)*5+4;
+ const c=w.crown,slot=BIG_OF(MONTH_OF(w.round));
  const pool=availableIn(w,'S-TIER',booked);
  const ok=(id?:string|null)=>!!id&&pool.some(f=>f.id===id);
  const get=(id:string)=>pool.find(f=>f.id===id)!;
@@ -248,7 +266,7 @@ function bookContinental(w:World,belt:ContinentalBelt,index:RivalStats,rng:Rando
 function chooseHeadliner(w:World,rng:Random,index:RivalStats,protectedIds:Set<string>):PendingFight|null{
  const slot=CALENDAR[w.round],booked=bookedThisMonth(w);
  let booking:Booking|null=null;
- if(slot.week===5){
+ if(slot.kind==='major'){
   const planned=w.marqueeReservation;
   const pool=availableIn(w,'S-TIER',booked);
   if(planned&&planned.year===w.year&&planned.month===MONTH_OF(w.round)&&pool.some(f=>f.id===planned.a)&&pool.some(f=>f.id===planned.b))booking={a:planned.a,b:planned.b,kind:planned.kind};
@@ -263,17 +281,21 @@ function chooseHeadliner(w:World,rng:Random,index:RivalStats,protectedIds:Set<st
  }
  return {fighterA:booking.a,fighterB:booking.b,year:w.year,roundIndex:w.round,division:'S-TIER',titleFight:isTitleKind(booking.kind),eventName:slot.name,...(booking.kind?{belt:'WORLD' as BeltId,kind:booking.kind}:{})};
 }
-/** Prepare the undercard, but leave the featured contest unplayed and its outcome unknown. */
+/** How many world-tier bouts make the main card (main event included). The rest are prelims. */
+export const MAIN_CARD=5;
+const WORLD_TIER=new Set<Division>(['S-TIER','GLOBAL D2']);
+/** Prepare an event. Continental and regional bouts are resolved now, in the background.
+    The world-tier card (S-Tier and Global D2) stays unplayed until the event starts. */
 export function prepareCircuitRound(w:World,rng:Random):void{
  if(w.pendingFight)throw Error('Complete the pending main event before advancing');
  recover(w,rng);rankByCompetition(w);w.lastFightIds=[];
- const month=MONTH_OF(w.round),monthFinale=month*5+4,rivals=buildRivalIndex(w);
+ const month=MONTH_OF(w.round),monthFinale=BIG_OF(month),rivals=buildRivalIndex(w);
  // Month-start bookings: the marquee pair and any continental title fights are locked in,
  // so weekly matchmaking cannot use up those fighters' one monthly appearance.
  if(WEEK_OF(w.round)===0){
   w.marqueeReservation=null;w.beltReservations=null;
   if(!isTournamentSlot(w.year,monthFinale)){const b=bookWorldMarquee(w,rng,rivals,new Set());if(b)w.marqueeReservation={year:w.year,month,a:b.a,b:b.b,kind:b.kind};}
-  if(isContinentalRound(month*5+3)){
+  if(isContinentalRound(month*WEEKS+2)){
    const pairs:Partial<Record<BeltId,[string,string]>>={};
    for(const belt of CONTINENTAL_BELTS){const b=bookContinental(w,belt,rivals,rng,new Set());if(b)pairs[belt]=[b.a,b.b];}
    w.beltReservations={year:w.year,month,pairs};
@@ -281,9 +303,9 @@ export function prepareCircuitRound(w:World,rng:Random):void{
  }
  const protectedIds=protectedChampions(w);
  const marquee=w.marqueeReservation;
- if(marquee&&marquee.year===w.year&&marquee.month===month&&WEEK_OF(w.round)<4){protectedIds.add(marquee.a);protectedIds.add(marquee.b);}
+ if(marquee&&marquee.year===w.year&&marquee.month===month&&WEEK_OF(w.round)<WEEKS-1){protectedIds.add(marquee.a);protectedIds.add(marquee.b);}
  const nights=w.beltReservations&&w.beltReservations.year===w.year&&w.beltReservations.month===month?w.beltReservations:null;
- if(nights&&w.round<=month*5+3)for(const pair of Object.values(nights.pairs))if(pair){protectedIds.add(pair[0]);protectedIds.add(pair[1]);}
+ if(nights&&w.round<=month*WEEKS+2)for(const pair of Object.values(nights.pairs))if(pair){protectedIds.add(pair[0]);protectedIds.add(pair[1]);}
  const headline=chooseHeadliner(w,rng,rivals,protectedIds);
  w.pendingFight=headline;
  const reserved=new Set<string>(protectedIds);
@@ -296,25 +318,45 @@ export function prepareCircuitRound(w:World,rng:Random):void{
    if(pool.some(f=>f.id===pair[0])&&pool.some(f=>f.id===pair[1]))resolveBout(w,rng,pair[0],pair[1],{belt,kind:'title'});
   }
  }
+ const deferred:PendingFight[]=[];
  for(const division of DIVISIONS){const pairs=scheduleDivision(w,division,rng,rivals,reserved);
   for(const [a,b] of pairs){if(headline&&(a===headline.fighterA||a===headline.fighterB||b===headline.fighterA||b===headline.fighterB))continue;
-   resolveBout(w,rng,a,b);
+   if(WORLD_TIER.has(division))deferred.push({fighterA:a,fighterB:b,year:w.year,roundIndex:w.round,division,titleFight:false,eventName:CALENDAR[w.round].name});
+   else resolveBout(w,rng,a,b);
   }
  }
+ // Card order: S-Tier before Global D2, then the best-ranked pairings first.
+ const rankOf=(id:string)=>w.fighters.find(f=>f.id===id)!.rank;
+ deferred.sort((x,y)=>(x.division==='S-TIER'?0:1)-(y.division==='S-TIER'?0:1)||Math.min(rankOf(x.fighterA),rankOf(x.fighterB))-Math.min(rankOf(y.fighterA),rankOf(y.fighterB)));
+ const card=[...(headline?[headline]:[]),...deferred];
+ card.forEach((p,i)=>{if(i>=MAIN_CARD)p.prelim=true;});
+ w.pendingCard=card;
  rankByCompetition(w);
  const ranks=new Map(w.fighters.filter(f=>f.status==='active').map(f=>[f.id,f.rank]));
  for(const f of w.fights.slice(-w.lastFightIds.length)){f.rankAfterA=ranks.get(f.fighterA)!;f.rankAfterB=ranks.get(f.fighterB)!;}
 }
-/** Consumes the outstanding fight. No predicted/hidden winner exists before this call. */
-export function settleHeadliner(w:World,rng:Random):Fight|null{
- const pending=w.pendingFight;if(!pending)return null;
- if(pending.year!==w.year||pending.roundIndex!==w.round)throw Error('Stale fight card');
- const bout=resolveBout(w,rng,pending.fighterA,pending.fighterB,{belt:pending.belt??(pending.titleFight?'WORLD':undefined),kind:pending.kind??(pending.titleFight?'title':undefined),featured:true});
- rankByCompetition(w);bout.rankAfterA=w.fighters.find(f=>f.id===bout.fighterA)!.rank;bout.rankAfterB=w.fighters.find(f=>f.id===bout.fighterB)!.rank;
- w.pendingFight=null;return bout;
+/** Fights the whole prepared card: prelims first, the main event last. No winner exists before this call.
+    `watch` holds card positions to keep the exchange-by-exchange broadcast for; recording never changes a result.
+    Returns fight ids by card position (main event first; '' where a bout could not take place). */
+export function settleCard(w:World,rng:Random,watch:ReadonlySet<number>=new Set([0])):string[]{
+ const card=w.pendingCard??(w.pendingFight?[w.pendingFight]:[]);
+ const ids:string[]=new Array(card.length).fill('');
+ for(let i=card.length-1;i>=0;i--){
+  const p=card[i];
+  if(p.year!==w.year||p.roundIndex!==w.round)throw Error('Stale fight card');
+  const a=w.fighters.find(f=>f.id===p.fighterA),b=w.fighters.find(f=>f.id===p.fighterB);
+  if(!a||!b||a.status!=='active'||b.status!=='active')continue;
+  const bout=resolveBout(w,rng,p.fighterA,p.fighterB,{belt:p.belt??(p.titleFight?'WORLD':undefined),kind:p.kind??(p.titleFight?'title':undefined),featured:watch.has(i)});
+  ids[i]=bout.id;
+ }
+ rankByCompetition(w);
+ const ranks=new Map(w.fighters.filter(f=>f.status==='active').map(f=>[f.id,f.rank]));
+ for(const id of ids)if(id){const bout=w.fights.find(f=>f.id===id);if(bout){bout.rankAfterA=ranks.get(bout.fighterA)!;bout.rankAfterB=ranks.get(bout.fighterB)!;}}
+ w.pendingFight=null;w.pendingCard=null;w.lastCardIds=ids.filter(Boolean);
+ return ids;
 }
 export function finishCircuitRound(w:World):void{
- if(w.pendingFight)throw Error('Main event unresolved');
+ if(w.pendingFight||w.pendingCard)throw Error('Main event unresolved');
  w.round++;
 }
 export function matchStyleSummary(a:Fighter,b:Fighter){const adv=styleAdvantage(a.style,b.style);return adv>0?`${a.style} has a stylistic edge`:adv<0?`${b.style} has a stylistic edge`:'Styles are relatively balanced';}

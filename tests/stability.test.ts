@@ -10,13 +10,13 @@ import {ledgerCount} from '../src/engine/archive';
     cannot create nonexistent tournaments or damage serialized careers. */
 describe('NEXUS v0.8 — final stabilization',()=>{
  it('does not advertise an Olympiad during an ordinary August',()=>{
-  expect(ROUNDS_PER_YEAR).toBe(60);
-  expect(CALENDAR[39].name).toBe('HORIZON');
-  expect(kindAt(2058,39)).toBeNull();
-  expect(eventNameAt(2058,39)).toBeNull();
-  expect(kindAt(2060,39)).toBe('OLYMPIAD');
-  expect(eventNameAt(2060,39)).toBe('WORLD COMBAT OLYMPIAD');
-  expect(kindAt(2061,39)).toBeNull();
+  expect(ROUNDS_PER_YEAR).toBe(48);
+  expect(CALENDAR[31].name).toBe('HORIZON');
+  expect(kindAt(2058,31)).toBeNull();
+  expect(eventNameAt(2058,31)).toBeNull();
+  expect(kindAt(2060,31)).toBe('OLYMPIAD');
+  expect(eventNameAt(2060,31)).toBe('WORLD COMBAT OLYMPIAD');
+  expect(kindAt(2061,31)).toBeNull();
  });
  it('retains identical main-event results for watch and skip',()=>{
   const prepared=prepareNextEvent(createWorld(822));
