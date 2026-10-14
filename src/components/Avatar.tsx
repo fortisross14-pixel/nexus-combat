@@ -1,75 +1,93 @@
 import {useId} from 'react';
 import type {Fighter, Style} from '../engine/types';
 
-// Vite bundles the referenced SVG; this needs no special ?url TypeScript declaration.
-const spriteAtlasUrl = new URL('../assets/portrait-sprites.svg', import.meta.url).href;
+const spriteAtlasUrl = new URL('../assets/portrait-sprites-v2.svg', import.meta.url).href;
 
 interface Props {fighter:Fighter;size?:number;className?:string;}
 
-/** The portrait library contains independent, transparent, hand-illustrated sprites.
- * Each layer is referenced from the same SVG asset, cached across all fighter cards.
- * Saved ProfileAppearance values are unchanged: existing saves retain their faces.
- */
-const outfits:Record<Style,number>={
-  Boxing:0, Kickboxing:1, 'Muay Thai':2, Karate:3, Taekwondo:4,
-  'Freestyle Wrestling':5, 'Greco-Roman Wrestling':6, Judo:7,
-  'Brazilian Jiu-Jitsu':8, Sambo:9, Sumo:10, 'MMA Hybrid':11
+type RaceKey='asian'|'lightbrown'|'black'|'darkbrown'|'white';
+
+const BODY_BY_STYLE:Record<Style,number>={
+  Boxing:4,
+  Kickboxing:0,
+  'Muay Thai':4,
+  Karate:3,
+  Taekwondo:3,
+  'Freestyle Wrestling':2,
+  'Greco-Roman Wrestling':2,
+  Judo:3,
+  'Brazilian Jiu-Jitsu':3,
+  Sambo:2,
+  Sumo:4,
+  'MMA Hybrid':1,
 };
-const palette=['#b75b6e','#c7a464','#6cadbb','#789cd6','#a6bc8b'];
-const number=(n:number|undefined,fallback=0)=>Number.isFinite(n)?Math.abs(Math.trunc(n!)):fallback;
+const HAIR_COLORS=['#17181f','#3c2920','#815732','#bc9657'];
+const EMBLEMS=['#c96f78','#c6a163','#67a8b5','#7799d0','#a8bb8a'];
+
+const absInt=(n:number|undefined,fallback=0)=>Number.isFinite(n)?Math.abs(Math.trunc(n!)):fallback;
+const mod=(n:number,m:number)=>((n%m)+m)%m;
 const hash=(str:string,seed=2166136261)=>{
   let h=seed>>>0;
-  for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),16777619)>>>0;}
+  for(let i=0;i<str.length;i++)h=Math.imul(h^str.charCodeAt(i),16777619)>>>0;
   return h>>>0;
 };
 
+function pickRace(fighter:Fighter):RaceKey{
+  const s=absInt(fighter.appearance?.skin);
+  const h=hash(`${fighter.id}:${fighter.region}:${fighter.country}`)%100;
+  switch(fighter.region){
+    case 'APAC': return (['asian','asian','lightbrown','darkbrown','white'] as RaceKey[])[(s+h)%5];
+    case 'Africa': return (['black','darkbrown','black','lightbrown','darkbrown'] as RaceKey[])[(s+h)%5];
+    case 'Europe & Middle East': return (['white','lightbrown','darkbrown','white','lightbrown'] as RaceKey[])[(s+h)%5];
+    case 'Americas': default: return (['white','lightbrown','black','darkbrown','asian'] as RaceKey[])[(s+h)%5];
+  }
+}
+
 export function Avatar({fighter,size=58,className=''}:Props){
   const id=useId().replace(/:/g,'');
-  const a=fighter.appearance;
-  const identity=hash(fighter.id);
-  const face=number(a?.face)%6;
-  const skin=number(a?.skin)%8;
-  const tone=number(a?.hair)%7;
-  // Respect the saved hair and face identity, then use a second deterministic
-  // variation to expand the original ten hairstyles into twenty illustrated sets.
-  const hair=number(a?.hairStyle)%10+(hash(`${fighter.id}:hair`)%2)*10;
-  const eye=(number(a?.face)*2+hash(`${fighter.id}:eyes`)%3)%12;
-  const iris=hash(`${fighter.id}:iris`)%5;
-  const brow=(number(a?.expression)*3+hash(`${fighter.id}:brow`)%3)%12;
-  const nose=(number(a?.face)+hash(`${fighter.id}:nose`)%4)%8;
-  const mouth=(number(a?.expression)*3+hash(`${fighter.id}:mouth`)%3)%12;
-  const beard=(number(a?.facialHair)+(hash(`${fighter.id}:beard`)%2)*4)%10;
-  const detail=a?.scar?1+(identity%2):(number(a?.accessory)===2?3:number(a?.accessory)===3?4:0);
-  const emblem=palette[identity%palette.length];
+  const race=pickRace(fighter);
+  const appearance=fighter.appearance;
+  const signature=hash(fighter.id);
+  const face=mod(absInt(appearance?.face)+mod(signature,4),4);
+  const ears=mod(absInt(appearance?.expression)+mod(signature,2),2);
+  const hair=mod(absInt(appearance?.hairStyle)*4 + mod(hash(`${fighter.id}:hairset`),4),40);
+  const hairColor=HAIR_COLORS[mod(absInt(appearance?.hair)+mod(signature,4),HAIR_COLORS.length)];
+  const eyes=mod(absInt(appearance?.expression)*3 + mod(hash(`${fighter.id}:eyes`),12),12);
+  const brows=mod(absInt(appearance?.face)*2 + mod(hash(`${fighter.id}:brows`),12),12);
+  const nose=mod(absInt(appearance?.face)+mod(hash(`${fighter.id}:nose`),3),3);
+  const mouth=mod(absInt(appearance?.expression)*2 + mod(hash(`${fighter.id}:mouth`),5),5);
+  const beard=mod(absInt(appearance?.facialHair)+mod(hash(`${fighter.id}:beard`),12),12);
+  const accessoryBase=appearance?.scar ? 2 + mod(signature,2) : (appearance?.accessory===2 ? 0 : appearance?.accessory===3 ? 1 : appearance?.accessory===4 ? 4 : -1);
+  const emblem=EMBLEMS[mod(signature,EMBLEMS.length)];
   const elite=fighter.rarity==='Generational'||fighter.rarity==='Legend'||fighter.rarity==='Epic';
-  const reference=(name:string)=>`${spriteAtlasUrl}#${name}`;
-  const layer=(key:string)=> <use key={key} href={reference(key)} width="180" height="200"/>;
+  const body=BODY_BY_STYLE[fighter.style];
+  const ref=(key:string)=>`${spriteAtlasUrl}#${key}`;
+  const useLayer=(key:string, extra?:{style?:{color?:string}})=><use key={key} href={ref(key)} width="180" height="200" {...extra}/>;
 
-  return <svg className={`avatar ${className}`} width={size} height={size} viewBox="0 0 180 200" role="img" aria-label={`${fighter.name}, ${fighter.style}, layered illustrated portrait`}>
+  return <svg className={`avatar ${className}`} width={size} height={size} viewBox="0 0 180 200" role="img" aria-label={`${fighter.name} portrait`}>
     <defs>
       <linearGradient id={`portrait-bg-${id}`} x1="0" y1="0" x2="1" y2="1">
-        <stop stopColor="#253743"/><stop offset=".55" stopColor="#1a2b37"/><stop offset="1" stopColor="#111925"/>
+        <stop stopColor="#293e4c"/><stop offset=".52" stopColor="#1a2b37"/><stop offset="1" stopColor="#101824"/>
       </linearGradient>
       <clipPath id={`portrait-clip-${id}`}><rect width="180" height="200" rx="11"/></clipPath>
     </defs>
     <g clipPath={`url(#portrait-clip-${id})`}>
       <rect width="180" height="200" fill={`url(#portrait-bg-${id})`}/>
-      <circle cx="90" cy="84" r="68" fill="none" stroke="#9ec4ca" strokeOpacity=".1" strokeWidth="1.2"/>
-      <path d="M-10 174L130 0M24 210L200 12" stroke={emblem} strokeOpacity=".08" strokeWidth="7"/>
-      {layer(`outfit-${outfits[fighter.style]}-${skin}`)}
-      {layer(`head-${face}-${skin}`)}
-      {layer(`eyes-${eye}-${iris}`)}
-      {layer(`brows-${brow}-${tone}`)}
-      {layer(`nose-${nose}-${skin}`)}
-      {layer(`beard-${beard}-${tone}`)}
-      {layer(`mouth-${mouth}-${skin}`)}
-      {layer(`hair-${hair}-${tone}`)}
-      {detail>0&&layer(`detail-${detail}`)}
-      <ellipse cx="90" cy="103" rx="31" ry="42" fill="#051017" opacity=".045"/>
-      {identity%3===0&&<><circle cx="77" cy="90" r="1.5" fill="#7b443b" opacity=".38"/><circle cx="104" cy="92" r="1.2" fill="#7b443b" opacity=".35"/></>}
-      {identity%5===0&&<path d="M70 126Q90 132 110 126" fill="none" stroke="#fff" strokeOpacity=".16" strokeWidth="1"/>}
-      {elite&&<><path d="M12 181H55M125 181H168" stroke={emblem} strokeWidth="2" strokeOpacity=".5"/><path d="M12 20V11H21M159 11H168V20" stroke={emblem} strokeWidth="2" strokeOpacity=".54" fill="none"/></>}
-      <path d="M1 184H179" stroke="#c9e5ed" strokeOpacity=".16"/>
+      <path d="M-8 178L123 -4M42 208L198 62" stroke={emblem} strokeOpacity=".08" strokeWidth="7"/>
+      <circle cx="90" cy="85" r="67" fill="none" stroke="#8fb9bf" strokeOpacity=".11" strokeWidth="1.2"/>
+      {useLayer(`body-${race}-${body}`)}
+      {useLayer(`head-${race}-${face}`)}
+      {useLayer(`ears-${race}-${ears}`)}
+      {useLayer(`eyes-${eyes}`)}
+      {useLayer(`brows-${brows}`,{style:{color:hairColor}})}
+      {useLayer(`nose-${race}-${nose}`)}
+      {useLayer(`mouth-${race}-${mouth}`)}
+      {beard!==0 && useLayer(`beard-${beard}`,{style:{color:hairColor}})}
+      {useLayer(`hair-${hair}`,{style:{color:hairColor}})}
+      {accessoryBase>=0 && useLayer(`accessory-${accessoryBase}`)}
+      <ellipse cx="90" cy="104" rx="32" ry="43" fill="#08121a" opacity=".04"/>
+      {elite&&<><path d="M12 18V10H20M160 10H168V18M12 182H54M126 182H168" stroke={emblem} strokeWidth="2" strokeOpacity=".55" fill="none"/></>}
+      <path d="M1 184H179" stroke="#d7e7ea" strokeOpacity=".16"/>
       <rect x="0" y="184" width="180" height="16" fill="#121b25" fillOpacity=".68"/>
       <text x="90" y="195" fontSize="6.9" fill="#dbe7e8" opacity=".84" textAnchor="middle" letterSpacing="1.1" fontWeight="600">{fighter.nickname.toUpperCase().slice(0,20)}</text>
     </g>
