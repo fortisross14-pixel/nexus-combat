@@ -23,7 +23,6 @@ export function SurgeBroadcast({world,t,onStep,onAdvance,onFinish,onFighter,onCl
  useEffect(()=>{const handler=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[onClose]);
  const state=t.surgeState;
  const minute=state?.minute??0;
- const participants=t.surgeOrder??t.participants;
  const entered=state?Object.keys(state.fighters).length:t.surgeMoments?.filter(m=>m.entrantId).length??0;
  const active=t.surgeActive??[];
  const eliminated=entered-active.length;
