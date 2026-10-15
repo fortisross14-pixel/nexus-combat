@@ -4,14 +4,14 @@ import type {ActionCategory,ExchangeBeat,Fighter,FightAction,FightMethod,FightPo
 
 /* ───────────────────────────── Tuning ─────────────────────────────
    The displayed win chance is a logistic curve on a rating-point "edge":
-   updated for action-based fatigue: approximately a 3-point edge gives 60%,
-   a 6-point edge 70%, a 10-point edge 80%, and a 16-point edge 90%.
+   updated for action-based fatigue: approximately a 3-point edge gives 62%,
+   a 6-point edge 72%, a 10-point edge 83%, and a 16-point edge 93%.
    Calibration is monitored by the combat balance suite. */
-export const ODDS_SCALE=7.35;
+export const ODDS_SCALE=6.2;
 /** Exchange-contest sensitivity to a one-point skill difference. */
-const K=28;
+const K=32;
 /** Fight-night form: hidden good/bad-night roll, in rating points. */
-const FORM_SD=6.5;
+const FORM_SD=5.8;
 /** Each favourable style matchup is worth this many rating points. */
 export const STYLE_EDGE=3;
 const EXCHANGES=12;

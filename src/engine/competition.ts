@@ -177,6 +177,12 @@ function resolveBout(w:World,rng:Random,idA:string,idB:string,opts:BoutOptions={
  const decisive=stoppage(result.method)?(result.finishRound===1?1.25:1.12):result.method==='SD'||result.method==='MD'?.87:result.method==='DRAW'?.82:1;
  const shift=Math.round(36*decisive*(outcomeA-expectedA));
  a.rankingPoints=clamp(oldPointsA+shift,850,2050);b.rankingPoints=clamp(oldPointsB-shift,850,2050);
+ // A newly arrived fighter must establish form in THIS division before championship contention.
+ if(!opts.kind||!['title','interim','unification','pinnacle','contract','eliminator'].includes(opts.kind)){
+  for(const fighter of [a,b]){if(!fighter.titlePath||fighter.titlePath.division!==fighter.division)fighter.titlePath={division:fighter.division,wins:0,eliminatorWins:0};}
+  const victorious=[a,b].find(f=>f.id===result.winnerId);if(victorious)victorious.titlePath!.wins++;
+ }
+ if(opts.kind==='eliminator'){const victorious=[a,b].find(f=>f.id===result.winnerId);if(victorious){if(!victorious.titlePath||victorious.titlePath.division!==victorious.division)victorious.titlePath={division:victorious.division,wins:0,eliminatorWins:0};victorious.titlePath.eliminatorWins++;}}
  if(result.winnerId===null){a.record.draws++;b.record.draws++;a.record.streak=0;b.record.streak=0;}
  else updateRecord(result.winnerId===a.id?a:b,result.winnerId===a.id?b:a,result.method);
  const sA=shapeShift(a,b,outcomeA===1?'win':outcomeA===0?'loss':'draw',result.method,result.finishRound,w.year,oldStreakA);
@@ -242,15 +248,26 @@ function availableIn(w:World,division:Division,booked:Set<string>,exclude:Set<st
 function bestOpponent(w:World,a:Fighter,pool:Fighter[],index:RivalStats,rng:Random,spread=.8,rivalWeight=.12){
  return pool.filter(f=>f.id!==a.id).slice(0,8).map(f=>({f,score:Math.abs(f.rank-a.rank)*spread+rivalsPenalty(a,f,w,index)*rivalWeight+rng.float(0,3)})).sort((x,y)=>x.score-y.score)[0]?.f;
 }
+/** A new arrival starts unproven in the division. Existing saves use the stored ledger
+    only for athletes without a gate; completed promotions explicitly reset it. */
+export function currentDivisionWins(w:World,f:Fighter){
+ if(f.titlePath?.division===f.division)return f.titlePath.wins;
+ // Compatibility: years already played before this release still count for established contenders.
+ let wins=0;
+ for(const y of [w.year-1,w.year])for(const e of w.ledger[y]??[])if(!e.t&&e.d===f.division&&e.w===f.id)wins++;
+ return wins;
+}
+const earnedContenderSpot=(w:World,f:Fighter)=>currentDivisionWins(w,f)>=1;
+const eligibleTitleChallenger=(w:World,f:Fighter)=>currentDivisionWins(w,f)>=2||((f.titlePath?.eliminatorWins??0)>0&&currentDivisionWins(w,f)>=1);
 /** A brand's title-night bout: title, interim or unification. A guaranteed title shot (won at The Pinnacle) comes first. */
 function bookBrandTitle(w:World,brand:Brand,rng:Random,index:RivalStats,booked:Set<string>):Booking|null{
  const c=w.crowns![brand];
  const pool=availableIn(w,TOP_DIVISION[brand],booked);
  const ok=(id?:string|null)=>!!id&&pool.some(f=>f.id===id);
  const get=(id:string)=>pool.find(f=>f.id===id)!;
- const contenders=(...exclude:(string|null|undefined)[])=>pool.filter(f=>!exclude.includes(f.id));
- const shot=w.titleShot&&w.titleShot.brand===brand&&ok(w.titleShot.fighterId)?w.titleShot.fighterId:null;
- const next=(...exclude:(string|null|undefined)[])=>shot&&!exclude.includes(shot)?get(shot):ok(c.mandatoryId)&&!exclude.includes(c.mandatoryId)?get(c.mandatoryId!):undefined;
+ const contenders=(...exclude:(string|null|undefined)[])=>pool.filter(f=>!exclude.includes(f.id)&&eligibleTitleChallenger(w,f));
+ const shot=w.titleShot&&w.titleShot.brand===brand&&ok(w.titleShot.fighterId)&&eligibleTitleChallenger(w,get(w.titleShot.fighterId))?w.titleShot.fighterId:null;
+ const next=(...exclude:(string|null|undefined)[])=>shot&&!exclude.includes(shot)?get(shot):ok(c.mandatoryId)&&!exclude.includes(c.mandatoryId)&&eligibleTitleChallenger(w,get(c.mandatoryId!))?get(c.mandatoryId!):undefined;
  if(!c.championId){
   const first=next(c.interimId)??contenders(c.interimId)[0];if(!first)return null;
   const second=contenders(first.id,c.interimId)[0];return second?{a:first.id,b:second.id,kind:'title',brand}:null;
@@ -270,7 +287,7 @@ function bookBrandTitle(w:World,brand:Brand,rng:Random,index:RivalStats,booked:S
 /** Title eliminator: the strongest contenders (star power breaks near-ties), never champions, the mandatory challenger or a title-shot holder. */
 function bookEliminator(w:World,brand:Brand,rng:Random,index:RivalStats,booked:Set<string>):Booking|null{
  const c=w.crowns![brand];
- const list=availableIn(w,TOP_DIVISION[brand],booked).filter(f=>![c.championId,c.interimId,c.mandatoryId,w.titleShot?.fighterId].includes(f.id));
+ const list=availableIn(w,TOP_DIVISION[brand],booked).filter(f=>![c.championId,c.interimId,c.mandatoryId,w.titleShot?.fighterId].includes(f.id)&&earnedContenderSpot(w,f));
  const first=list.slice(0,4).map(f=>({f,score:f.rank-Math.min(3,(f.fame||0)/120)+rng.float(0,1.5)})).sort((x,y)=>x.score-y.score)[0]?.f;
  if(!first)return null;
  const second=bestOpponent(w,first,list,index,rng);
@@ -293,8 +310,8 @@ function bookContinental(w:World,belt:ContinentalBelt,index:RivalStats,rng:Rando
  const b=w.belts[belt],pool=availableIn(w,BELT_DIVISION[belt],booked).filter(f=>f.region===BELT_REGION[belt]);
  const champ=pool.find(f=>f.id===b.championId);
  if(b.championId&&!champ)return null; // An unavailable continental champion simply misses this title night.
- const first=champ||pool[0];if(!first)return null;
- const second=champ?pool.filter(f=>f.id!==champ.id).map(f=>({f,score:f.rank*2+rivalsPenalty(champ,f,w,index)*.04+rng.float(0,2)})).sort((x,y)=>x.score-y.score)[0]?.f:pool.find(f=>f.id!==first.id);
+ const entrants=pool.filter(f=>earnedContenderSpot(w,f));const first=champ||entrants[0];if(!first)return null;
+ const second=champ?entrants.filter(f=>f.id!==champ.id).map(f=>({f,score:f.rank*2+rivalsPenalty(champ,f,w,index)*.04+rng.float(0,2)})).sort((x,y)=>x.score-y.score)[0]?.f:entrants.find(f=>f.id!==first.id);
  return second?{a:first.id,b:second.id,kind:'title'}:null;
 }
 /** The month's big-event bookings, made in week one so nobody spends their monthly bout before it. */

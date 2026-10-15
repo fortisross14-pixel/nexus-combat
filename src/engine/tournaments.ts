@@ -1,3 +1,4 @@
+import {getFight} from './archive';
 import {abilitiesOf,ageOf,clamp} from './career';
 import {Random} from './random';
 import {TOP_DIVISION,SECOND_DIVISION,BRANDS,REGIONS,REGION_DIVISIONS} from './constants';
@@ -101,32 +102,32 @@ export function pendingTournamentMatch(t:Tournament):TournamentMatch|null{
  if(t.kind==='SURGE'||t.status==='complete')return null;
  return t.matches.find(m=>m.winnerId===null&&!m.fightId)||null;
 }
-function groupStandings(t:Tournament,group:'A'|'B'){
+function groupStandings(t:Tournament,group:'A'|'B',world?:World){
  const groupMembers=t.participants.filter((_,i)=>group==='A'?[0,3,4,7].includes(i):[1,2,5,6].includes(i));
  const stats=groupMembers.map((id,i)=>({id,points:0,wins:0,losses:0,draws:0,finishes:0,seed:i}));
  for(const m of t.matches.filter(m=>m.group===group&&m.fightId)){
   for(const entry of stats.filter(x=>x.id===m.fighterA||x.id===m.fighterB)){
-   if(m.winnerId===entry.id){entry.points+=3;entry.wins++;}
+   if(m.winnerId===entry.id){entry.points+=3;entry.wins++;if(['KO','TKO','SUB'].includes(m.finishMethod??(world&&m.fightId?getFight(world,m.fightId)?.method:'')??'')){entry.points++;entry.finishes++;}}
    else if(m.winnerId===null){entry.points++;entry.draws++;}
    else entry.losses++;
   }
  }
  return stats.sort((a,b)=>b.points-a.points||b.wins-a.wins||a.losses-b.losses||a.seed-b.seed);
 }
-export function standings(t:Tournament){return {A:groupStandings(t,'A'),B:groupStandings(t,'B')};}
+export function standings(t:Tournament,world?:World){return {A:groupStandings(t,'A',world),B:groupStandings(t,'B',world)};}
 function seeded32(ids:string[]):[string,string][]{
  // True seeded bracket order (1 vs 32, 16 vs 17, 8 vs 25 etc.)
  const order=[1,32,16,17,8,25,9,24,4,29,13,20,5,28,12,21,2,31,15,18,7,26,10,23,3,30,14,19,6,27,11,22];
  return Array.from({length:16},(_,i)=>[ids[order[i*2]-1],ids[order[i*2+1]-1]] as [string,string]);
 }
-function ensureNextStage(t:Tournament){
+function ensureNextStage(t:Tournament,world:World){
  if(t.status==='complete'||t.kind==='SURGE')return;
  const stage=t.kind==='CRUCIBLE'?(t.stage<3?`Group MD${t.stage+1}`:t.stage===3?'Semifinal':'Final'):
   ['Prelim','Round of 32','Round of 16','Quarterfinal','Semifinal','Final'][t.stage];
  if(t.matches.filter(m=>m.stage===stage).some(m=>!m.fightId))return;
  if(t.kind==='CRUCIBLE'){
   if(t.stage<2){t.stage++;return;}
-  if(t.stage===2){const s=standings(t);makeMatches(t,'Semifinal',[[s.A[0].id,s.B[1].id],[s.B[0].id,s.A[1].id]]);t.stage=3;return;}
+  if(t.stage===2){const s=standings(t,world);makeMatches(t,'Semifinal',[[s.A[0].id,s.B[1].id],[s.B[0].id,s.A[1].id]]);t.stage=3;return;}
   if(t.stage===3){const semifinal=t.matches.filter(m=>m.stage==='Semifinal');makeMatches(t,'Final',[[semifinal[0].winnerId!,semifinal[1].winnerId!]]);t.stage=4;return;}
   const final=t.matches.find(m=>m.stage==='Final')!;t.winnerId=final.winnerId;t.runnerUpId=final.winnerId===final.fighterA?final.fighterB:final.fighterA;t.status='complete';return;
  }
@@ -165,16 +166,16 @@ export function advanceTournamentBout(w:World,rng:Random):string|null{
   // Explicit medical withdrawal; no imaginary fight, no damage to regular records.
   const now=CLOCK(w.year,w.round),fit=(f:Fighter)=>f.condition>=40&&f.injuryUntil<=now;
   const winner=fit(a)?a:fit(b)?b:t.participants.indexOf(a.id)<t.participants.indexOf(b.id)?a:b;
-  m.winnerId=winner.id;m.fightId=`walkover-${m.id}`;ensureNextStage(t);
+  m.winnerId=winner.id;m.fightId=`walkover-${m.id}`;ensureNextStage(t,w);
   if(t.winnerId!==null)awardWinner(w,t);
   return null;
  }
  const fight=resolveTournamentBout(w,rng,m.fighterA,m.fighterB,t.id,m.stage,t.kind==='OLYMPIAD'||!m.stage.startsWith('Group'));
  // Overnight short-format recovery between tournament bouts, still leaving stamina meaningful.
  for(const fighter of [a,b])if(fighter.injuryUntil<=CLOCK(w.year,w.round))fighter.condition=Math.min(Math.max(fighter.condition,86),fighter.condition+3);
- m.fightId=fight.id;m.winnerId=fight.winnerId;
+ m.fightId=fight.id;m.winnerId=fight.winnerId;m.finishMethod=fight.method;
  // Tournament matches don't generate regular ranking-point inflation or artificially add wins to circuit records.
- ensureNextStage(t);
+ ensureNextStage(t,w);
  if(t.winnerId!==null)awardWinner(w,t);
  return fight.id;
 }

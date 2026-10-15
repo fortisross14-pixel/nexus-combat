@@ -1,3 +1,4 @@
+import './nexus-refinements.css';
 import {useEffect,useState} from 'react';
 import {rankText} from './ui';
 import {Flag} from './Flag';
@@ -90,7 +91,7 @@ export function LiveFight({fight,world,onComplete}:{fight:Fight;world:World;onCo
  const damageB=finished?(timeline.at(-1)?.damageB??0):exchange?.damageB??Math.round((prevBeat?.damageB??0)*.92);
  // Floating captions: actions from the last ~1.7 real seconds of playback.
  const windowSim=BUBBLE_LIFE*12*speed;
- const bubbles=finished?allActs.filter(x=>x.c==='finish'):allActs.filter(x=>x.t<=local&&local-x.t<=windowSim).slice(-7);
+ const bubbles=finished?[]:allActs.filter(x=>x.t<=local&&local-x.t<=windowSim).slice(-7);
  const winner=world.fighters.find(f=>f.id===fight.winnerId);
  const moveNextRound=()=>{const next=roundStart+lengths[round];setElapsed(Math.min(total,next));setPlaying(next<total)};
  const phase=finished?'finish':currentPosition.toLowerCase().replace('-','');
@@ -101,8 +102,10 @@ export function LiveFight({fight,world,onComplete}:{fight:Fight;world:World;onCo
   <div className="broadcast-matchup"><div className="broadcast-contender contender-a"><div className="broadcast-avatar"><Avatar fighter={a} size={160}/></div><span className="broadcast-flag"><Flag code={a.flag}/> {a.country}</span><h2>{a.name}</h2><span className="broadcast-specialty">{a.style} · {rankText(fight.rankBeforeA)}</span><div className="energy-caption">ENERGY <strong>{finished?roundData.staminaA:energyA}%</strong></div><div className="broadcast-bar"><i style={{width:`${finished?roundData.staminaA:energyA}%`}}/></div></div>
   <div className="broadcast-arena"><div className="arena-backlights"/><div className="arena-badge">{finished?'FIGHT COMPLETE':`${currentPosition} EXCHANGE`}</div><div className={`arena-surface phase-${phase} ${playing?'in-motion':'paused'} ${finished&&stopped?'finish-flash':''}`}><div className="arena-floor"/><div className="arena-grid"/><div className="arena-athlete arena-attacker"><Avatar fighter={a} size={105}/></div><div className="arena-hit"><Zap size={23}/></div><div className="arena-athlete arena-defender"><Avatar fighter={b} size={105}/></div></div>
    <div className="arena-bubbles" aria-live="polite">{bubbles.map((act,i)=>{const h=hash(`${round}-${act.t}-${act.k}-${i}`);const left=act.c==='finish'?50:act.by===0?18+h%24:58+h%24;return <span key={`${round}-${act.t}-${act.k}-${act.by}`} className={`action-bubble cat-${act.c} side-${act.by===0?'a':'b'}`} style={{left:`${left}%`,marginBottom:act.c==='finish'?0:(h%3)*16}}>{actionLabel(act.k)}</span>;})}</div>
-   {finished?<div className="arena-outcome"><Crown size={24}/><b>{winner?winner.name:'DRAW'}</b><span>{winner?'VICTOR':'NO WINNER'} · {fight.method} · ROUND {fight.finishRound} / {fight.finishTime}</span>{fight.titleChange&&<small>NEW {fight.belt?BELT_SHORT[fight.belt].toUpperCase():'WORLD'} CHAMPION</small>}</div>:<div className="arena-score"><span>{strikesA}<small>SIG. STRIKES</small></span><strong>{scoreA} <i>—</i> {scoreB}</strong><span>{strikesB}<small>SIG. STRIKES</small></span></div>}</div>
+   {finished?<div className="arena-finished-label">OFFICIAL RESULT</div>:<div className="arena-score"><span>{strikesA}<small>SIG. STRIKES</small></span><strong>{scoreA} <i>—</i> {scoreB}</strong><span>{strikesB}<small>SIG. STRIKES</small></span></div>}</div>
   <div className="broadcast-contender contender-b"><div className="broadcast-avatar"><Avatar fighter={b} size={160}/></div><span className="broadcast-flag"><Flag code={b.flag}/> {b.country}</span><h2>{b.name}</h2><span className="broadcast-specialty">{b.style} · {rankText(fight.rankBeforeB)}</span><div className="energy-caption">ENERGY <strong>{finished?roundData.staminaB:energyB}%</strong></div><div className="broadcast-bar alt"><i style={{width:`${finished?roundData.staminaB:energyB}%`}}/></div></div></div>
+  {finished&&<div className="nexus-result-summary" role="status"><Crown size={23}/><div><span>WINNER · {fight.method} · ROUND {fight.finishRound} · {fight.finishTime}</span><strong>{winner?.name??'DRAW'}</strong>{fight.titleChange&&<small>NEW {fight.belt?BELT_SHORT[fight.belt].toUpperCase():'WORLD'} CHAMPION</small>}</div></div>}
+  <div className="nexus-energy-hud" aria-label="Live fighter energy"><div><b>{a.name}</b><span>ENERGY {Math.round(finished?roundData.staminaA:energyA)}%</span><meter min="0" max="100" value={Math.max(0,Math.min(100,finished?roundData.staminaA:energyA))}/></div><div><b>{b.name}</b><span>ENERGY {Math.round(finished?roundData.staminaB:energyB)}%</span><meter min="0" max="100" value={Math.max(0,Math.min(100,finished?roundData.staminaB:energyB))}/></div></div>
   {(totA.length>0||totB.length>0||timeline.length>0)&&<div className="live-stats"><div className="ls-head"><span>{a.name.split(' ').at(-1)?.toUpperCase()}</span><span>LIVE FIGHT STATS</span><span>{b.name.split(' ').at(-1)?.toUpperCase()}</span></div>
    {statRow('Sig. strikes',`${v(totA,STAT.SIGL)}/${v(totA,STAT.SIG)}`,`${v(totB,STAT.SIGL)}/${v(totB,STAT.SIG)}`)}
    {statRow('Total strikes',`${v(totA,STAT.STRL)}/${v(totA,STAT.STR)}`,`${v(totB,STAT.STRL)}/${v(totB,STAT.STR)}`)}

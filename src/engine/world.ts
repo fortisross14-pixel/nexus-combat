@@ -251,6 +251,7 @@ function autoDraft(w:World){
 function finishDraft(w:World,rng:Random){
  const d=w.draft!;
  for(const m of d.moves){const f=w.fighters.find(x=>x.id===m.id)!;
+  if(m.from!==m.to)f.titlePath={division:m.to,wins:0,eliminatorWins:0};
   const up=tier(m.to)<tier(m.from);
   const brand=brandOf(m.to);
   const text=up?(brand&&!isWorldTier(m.from)?`Signed by ${brand} from ${m.from}`:`Promoted from ${m.from} to ${m.to}`):(isWorldTier(m.from)&&!isWorldTier(m.to)?`Returned to continental competition (${m.to})`:`Relegated from ${m.from} to ${m.to}`);

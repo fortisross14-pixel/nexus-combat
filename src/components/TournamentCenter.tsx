@@ -28,7 +28,7 @@ function BoutTile({world,m,onFighter,onFight,active}:{world:World;m:TournamentMa
  </div>;
 }
 function Groups({world,t,onFighter}:{world:World;t:Tournament;onFighter:(id:string)=>void}){
- const s=standings(t);
+ const s=standings(t,world);
  return <div className="tr-groups">{(['A','B'] as const).map(g=><div className="tr-group" key={g}><header><span>GROUP {g}</span><small>TOP 2 ADVANCE</small></header><table><thead><tr><th>FIGHTER</th><th>P</th><th>W</th><th>D</th><th>L</th></tr></thead><tbody>{s[g].map((v,i)=><tr key={v.id}><td><button onClick={()=>onFighter(v.id)}><span className="tr-qualifier">{i+1}</span> <Flag code={fighter(world,v.id).flag}/> {fighter(world,v.id).name}</button></td><td><strong>{v.points}</strong></td><td>{v.wins}</td><td>{v.draws}</td><td>{v.losses}</td></tr>)}</tbody></table></div>)}</div>;
 }
 function Surge({world,t,onFighter}:{world:World;t:Tournament;onFighter:(id:string)=>void}){

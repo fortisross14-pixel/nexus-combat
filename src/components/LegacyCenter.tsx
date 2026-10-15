@@ -1,9 +1,11 @@
+import './nexus-refinements.css';
+import {seasonAchievements} from '../engine/chronicleDetails';
 import {useMemo,useState} from 'react';
 import {rankText} from './ui';
 import {Flag} from './Flag';
 import {ArrowRight,Award,BookOpen,Flame,Medal,Search,Shield,Star,Swords,Trophy} from 'lucide-react';
 import {Avatar} from './Avatar';
-import {careerSeasons,periodLeaderboards,hallOfFameEntries,honorList,legacyLeader,reignDuration} from '../engine/legacy';
+import {periodLeaderboards,hallOfFameEntries,honorList,legacyLeader,reignDuration} from '../engine/legacy';
 import {STYLES,isTopDivision} from '../engine/constants';
 import {CONTINENTAL_BELTS,topReigns} from '../engine/belts';
 import type {LegacyView,FighterLegacy,Rivalry} from '../engine/legacy';
@@ -11,7 +13,7 @@ import type {Fighter,World} from '../engine/types';
 import {getFight,ledgerCount,forEachLedger} from '../engine/archive';
 import './legacy.css';
 const CATEGORIES:[string,keyof Omit<FighterLegacy,'fighter'>,number][]=[
- ['Greatest careers','greatness',0],['Most victories','wins',0],['Win percentage','winPct',15],['Knockouts','kos',0],['Submissions','subs',0],['Days as world champion','titleDays',0],['World Crown defenses','defenses',0],['World Crown reigns','reigns',0],['Crucible titles','crucibles',0],['Surge victories','surges',0],['Olympiad gold medals','golds',0],['Major upsets','upsets',0],['Elite victories','eliteWins',0],['Lifetime fame','fame',0]];
+ ['Greatest careers','greatness',0],['Most victories','wins',0],['Win percentage','winPct',15],['Knockouts','kos',0],['Submissions','subs',0],['Days as world champion','titleDays',0],['World Crown defenses','defenses',0],['World Crown reigns','reigns',0],['Crucible titles','crucibles',0],['Surge victories','surges',0],['Olympiad gold medals','golds',0],['Pinnacle victories','pinnacles',0],['Doubles Crown reigns','doubles',0],['Continental crowns','beltReigns',0],['Continental defenses','beltDefenses',0],['Major upsets','upsets',0],['Elite victories','eliteWins',0],['Lifetime fame','fame',0]];
 const awardNames:[string,keyof Omit<World['awards'][number],'year'>][]=[['Fighter of the Year','fighterOfYear'],['Breakthrough Fighter','breakthrough'],['Fight of the Year','fightOfYear'],['KO of the Year','knockoutOfYear'],['Submission of the Year','submissionOfYear'],['Upset of the Year','upsetOfYear']];
 function getName(world:World,id:string|null){return id?world.fighters.find(f=>f.id===id)?.name||'Unknown fighter':'Not awarded';}
 function LegacyRow({entry,i,value,onFighter}:{entry:FighterLegacy;i:number;value:string|number;onFighter:(id:string)=>void}){const f=entry.fighter;return <button className="legacy-row" onClick={()=>onFighter(f.id)}><span className="legacy-place">{String(i+1).padStart(2,'0')}</span><Avatar fighter={f} size={55}/><span className="legacy-row-name"><strong>{f.name}</strong><small><Flag code={f.flag}/> · {f.style} · {f.status==='retired'?'RETIRED':f.division}</small></span><strong className="legacy-value">{value}</strong><ArrowRight size={15}/></button>}
@@ -50,9 +52,16 @@ export function FighterLegacyPanel({world,view,fighter,onFighter,onFight}:{world
  {honor.iconics.length>0&&<><div className="profile-section-head space-top">DEFINING MOMENTS</div>{honor.iconics.map(m=><button onClick={()=>m.fightId&&onFight(m.fightId)} className="legacy-profile-honor" key={m.id}><Flame size={17}/><div><strong>{m.year} · {m.title}</strong><span>{m.description}</span></div></button>)}</>}
  <div className="profile-section-head space-top">RIVALRIES <span>{own.length} SHOWN</span></div>{own.length?own.map(r=>{const opponent=world.fighters.find(f=>f.id===(r.a===fighter.id?r.b:r.a))!;return <button className="legacy-profile-rival" key={opponent.id} onClick={()=>onFighter(opponent.id)}><Avatar fighter={opponent} size={45}/><strong>{opponent.name}</strong><small>{r.a===fighter.id?r.winsA:r.winsB}–{r.a===fighter.id?r.winsB:r.winsA} · {r.meetings} meetings</small><ArrowRight size={14}/></button>}):<p className="legacy-muted">No significant rivalries documented.</p>}</div>;
 }
-export function CareerChronicle({world,fighter,onFight}:{world:World;fighter:Fighter;onFight:(id:string)=>void}){
- const seasons=useMemo(()=>careerSeasons(world,fighter.id),[world,fighter.id]);const [expanded,setExpanded]=useState<number|null>(null);
- return <div className="legacy-career"><div className="profile-section-head">YEAR-BY-YEAR CHRONICLE <span>{fighter.history.length} SEASONS</span></div><p className="legacy-muted">Historical ratings and rankings are opening-of-season snapshots; seasonal match records below reflect the fights completed during that year.</p>{fighter.history.slice().reverse().filter((h,i,all)=>i===0||h.year!==all[i-1].year).map(h=>{const row=seasons.get(h.year),events=world.tournaments.filter(t=>t.year===h.year&&t.winnerId===fighter.id).map(t=>t.kind==='OLYMPIAD'?'OLYMPIAD GOLD':t.kind==='CRUCIBLE'?'CRUCIBLE CHAMPION':'SURGE CHAMPION');const hasDetail=!!row?.notableFights.length;return <section key={h.year} className="legacy-career-year"><button className="legacy-year-toggle" onClick={()=>setExpanded(expanded===h.year?null:h.year)}><span>{h.year}<small>AGE {h.age}</small></span><span className="legacy-year-title"><strong>{h.division} · {rankText(h.rank)}</strong><small>{h.event}</small></span><span className="legacy-year-record">{row?`${row.wins}–${row.losses}–${row.draws}`:'0–0–0'}<small>BASE {h.base} · OVR {h.overall}</small></span><span>{expanded===h.year?'−':'+'}</span></button>{events.length>0&&<div className="legacy-career-medals">{events.map(e=><b key={e}><Medal size={13}/>{e}</b>)}</div>}{expanded===h.year&&<div className="legacy-year-detail"><div className="legacy-year-breakdown"><span>KO: {row?.kos??0}</span><span>SUB: {row?.subs??0}</span><span>Title wins: {row?.titleWins??0}</span><span>Shape: {h.shape>0?'+':''}{h.shape}</span></div>{hasDetail?row!.notableFights.map(b=><button key={b.id} className="legacy-bout-link" onClick={()=>onFight(b.id)}><span className={b.winnerId===fighter.id?'positive':'negative'}>{b.winnerId===fighter.id?'WIN':b.winnerId===null?'DRAW':'LOSS'}</span><span>{b.headline}</span><ArrowRight size={14}/></button>):<p className="legacy-muted">No recorded professional circuit bouts this season.</p>}</div>}</section>})}</div>;
+export function CareerChronicle({world,fighter}:{world:World;fighter:Fighter;onFight:(id:string)=>void}){
+ const history=useMemo(()=>fighter.history.slice().reverse().filter((h,i,all)=>i===0||h.year!==all[i-1].year),[fighter.history]);
+ const [expanded,setExpanded]=useState<number|null>(null);
+ return <div className="legacy-career"><div className="profile-section-head">SEASON ACHIEVEMENTS <span>{history.length} YEARS</span></div>
+ <p className="legacy-muted">Each year summarizes divisions, tournament journeys, crowns, successful defenses and honors. Individual bouts belong in the separate Fight Record tab.</p>
+ {history.map(h=>{const entry=seasonAchievements(world,fighter,h.year);return <section key={h.year} className="legacy-career-year">
+ <button className="legacy-year-toggle" onClick={()=>setExpanded(expanded===h.year?null:h.year)} aria-expanded={expanded===h.year}><span>{h.year}<small>AGE {h.age}</small></span><span className="legacy-year-title"><strong>{h.division} · {rankText(h.rank)}</strong><small>{entry.lines.length} season milestones</small></span><span className="legacy-year-record">{entry.regular.wins}–{entry.regular.losses}–{entry.regular.draws}<small>BASE {h.base} · OVR {h.overall}</small></span><span>{expanded===h.year?'−':'+'}</span></button>
+ <div className="nexus-year-achievements">{entry.lines.slice(0,expanded===h.year?undefined:4).map((line,i)=><div key={`${line.label}-${i}`}><strong>{line.label}</strong><span>{line.description}</span></div>)}</div>
+ {expanded===h.year&&<div className="nexus-year-stats"><span>Career shape {h.shape>=0?'+':''}{h.shape}</span><span>Condition {h.condition}</span><span>{entry.total} total event bouts</span><span>{h.event}</span></div>}
+ {!entry.lines.length&&<p className="nexus-year-none">No competitive milestones recorded yet.</p>}</section>;})}</div>;
 }
 
 /** Which martial art has the better history? World Crown reigns, defenses, tournaments and S Division results by style. */

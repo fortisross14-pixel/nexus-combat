@@ -1,3 +1,4 @@
+import './portrait-division.css';
 import {useId} from 'react';
 import type {Fighter,Style} from '../engine/types';
 import {NAME_POOLS,type NamePool} from '../engine/names';
@@ -128,12 +129,13 @@ export function Avatar({fighter,size=58,className=''}:Props){
  const uid=`av${useId().replace(/[^a-zA-Z0-9]/g,'')}`;
  const L=lookOf(fighter);
  const accent=['#d5787a','#d7b37a','#70b9c7','#8ea9eb','#a2c49c'][hash(fighter.id)%5];
+ const divisionFrame=fighter.division.startsWith('NOVA')?fighter.division.endsWith(' S')?'nexus-nova-one':'nexus-nova-two':fighter.division.startsWith('ONYX')?fighter.division.endsWith(' S')?'nexus-onyx-one':'nexus-onyx-two':'nexus-continental';
  const elite=fighter.rarity==='Generational'||fighter.rarity==='Legend'||fighter.rarity==='Epic';
  const kitLayer=L.kit==='bare'?null:`${L.kit}_cloth`;
  const hairName=L.hair<8?`hair${L.hair}`:null,beardName=L.beard>=0?`beard${L.beard}`:null;
  const f=(id:string)=>`${uid}-${id}`;
  const ci='sRGB';
- return <svg className={`avatar ${className}`} width={size} height={size} viewBox="0 0 360 400" role="img" aria-label={`${fighter.name}, ${fighter.style}, illustrated portrait`}>
+ return <svg className={`avatar ${divisionFrame} ${className}`} width={size} height={size} viewBox="0 0 360 400" role="img" aria-label={`${fighter.name}, ${fighter.style}, illustrated portrait`}>
   <defs>
    <linearGradient id={f('bg')} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#2b4453"/><stop offset=".6" stopColor="#1b2c39"/><stop offset="1" stopColor="#111a26"/></linearGradient>
    <clipPath id={f('card')}><rect width="360" height="400" rx="22"/></clipPath>

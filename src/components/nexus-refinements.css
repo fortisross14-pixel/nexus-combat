@@ -1,0 +1,31 @@
+/* Live result must never share the fighters' fighting surface. */
+.premium-broadcast .arena-finished-label{position:relative;z-index:2;align-self:center;padding:6px 11px;border:1px solid #f2cb71aa;border-radius:20px;background:#0c1c31e8;color:#f5d68e;font-size:10px;letter-spacing:1.4px;font-weight:900}
+.nexus-result-summary{margin:7px 19px 13px;padding:16px 18px;border:1px solid #d8ac537b;background:linear-gradient(115deg,#302919,#0f2032 72%);border-radius:14px;display:flex;gap:15px;align-items:center;color:#edc878;min-width:0}
+.nexus-result-summary>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.nexus-result-summary span{color:#ccced6;letter-spacing:.8px;font-weight:800;font-size:10px}
+.nexus-result-summary strong{color:#f5d488;font:900 clamp(22px,4vw,34px)/1.1 'Barlow Condensed',sans-serif;overflow-wrap:anywhere}
+.nexus-result-summary small{color:#f6d09b;font-weight:900}
+.nexus-energy-hud{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:6px 18px 14px}
+.nexus-energy-hud>div{min-width:0;border:1px solid #36566b;padding:9px 12px;border-radius:9px;background:#152c3b;display:grid;grid-template-columns:1fr auto;gap:5px 6px;align-items:center}
+.nexus-energy-hud b{font-size:11px;color:#dbeaf5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nexus-energy-hud span{font-weight:900;font-size:11px;color:#6fe5c5;white-space:nowrap}
+.nexus-energy-hud meter{grid-column:1/-1;width:100%;height:11px;accent-color:#4cddb6}
+.nexus-energy-hud>div:last-child span{color:#a7c7ff}
+.nexus-energy-hud>div:last-child meter{accent-color:#739ee7}
+@media(max-width:520px){.nexus-energy-hud{gap:5px;margin:5px 8px 10px}.nexus-energy-hud>div{padding:7px}.nexus-energy-hud b{font-size:9px}.nexus-energy-hud span{font-size:9px}.nexus-result-summary{margin:6px 8px 10px;padding:11px}}
+/* Season career records, not a duplicate fight-list tab. */
+.nexus-year-stats{display:flex;flex-wrap:wrap;gap:7px;padding:6px 15px 12px}
+.nexus-year-stats span{font-size:11px;color:#465d72;border:1px solid #dae4eb;border-radius:7px;padding:6px 9px;background:#f1f6fa}
+.nexus-year-achievements{display:grid;gap:7px;padding:0 15px 14px}
+.nexus-year-achievements>div{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;font-size:12px;border-left:3px solid #74a8af;padding:8px 12px;background:#f1f7fa;border-radius:5px}
+.nexus-year-achievements strong{font-size:11px;color:#19566e;min-width:94px}
+.nexus-year-achievements span{color:#304358}
+.nexus-year-none{padding:8px 16px 18px;font-size:12px;color:#7d94a3}
+/* Complete competition history archive */
+.nexus-honors{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:16px}
+.nexus-history-panel{min-width:0}.nexus-history-panel h2{font-size:20px;margin:0 0 7px}.nexus-history-panel>p{font-size:12px;color:#8092a2}
+.nexus-honor-list{display:grid;max-height:580px;overflow:auto}
+.nexus-honor-row{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid #dbe5ed;padding:10px 0;color:#263c50}
+button.nexus-honor-row{cursor:pointer}.nexus-honor-row>span{display:flex;flex-direction:column;gap:3px;min-width:0}.nexus-honor-row>span strong{font-size:12px}.nexus-honor-row>span small{font-size:10px;color:#6d8497}
+.nexus-honor-year{min-width:43px;font-weight:900;color:#9a7c38}
+.nexus-honor-stats{display:flex;flex-wrap:wrap;gap:9px}.nexus-honor-stats span{padding:7px 11px;border:1px solid #b4cdd9;border-radius:8px;color:#476476;font-weight:800;font-size:11px}

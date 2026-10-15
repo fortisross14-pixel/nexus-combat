@@ -19,7 +19,7 @@ export type StatLine = number[];
 /** Lifetime totals, kept on the fighter so career numbers survive archive compaction. */
 export interface CareerStats {fights:number;seconds:number;s:StatLine;kdTaken:number;oppTd:number;oppTdLanded:number;dmgTaken:number;}
 
-export interface Fighter {fame:number;id:string;name:string;nickname:string;country:string;flag:string;region:Region;birthYear:number;height:number;weight:number;reach:number;style:Style;mentality:Mentality;archetype:Archetype;rarity:Rarity;appearance:ProfileAppearance;potential:number;curve:number[];skillOffsets:number[];skillNoise:number[];shape:number;condition:number;division:Division;rank:number;status:'active'|'retired';joinedYear:number;retiredYear?:number;history:CareerSnapshot[];rankingPoints:number;record:FightRecord;injuryUntil:number;injuryName?:string;injurySeverity?:'minor'|'moderate'|'major';career?:CareerStats;}
+export interface Fighter {titlePath?:{division:Division;wins:number;eliminatorWins:number};fame:number;id:string;name:string;nickname:string;country:string;flag:string;region:Region;birthYear:number;height:number;weight:number;reach:number;style:Style;mentality:Mentality;archetype:Archetype;rarity:Rarity;appearance:ProfileAppearance;potential:number;curve:number[];skillOffsets:number[];skillNoise:number[];shape:number;condition:number;division:Division;rank:number;status:'active'|'retired';joinedYear:number;retiredYear?:number;history:CareerSnapshot[];rankingPoints:number;record:FightRecord;injuryUntil:number;injuryName?:string;injurySeverity?:'minor'|'moderate'|'major';career?:CareerStats;}
 /** The World Crown plus one Continental belt per region. */
 /** NOVA and ONYX: the brand world titles. WORLD: the single World Crown from before the brand split (history only). */
 export type BeltId='NOVA'|'ONYX'|'WORLD'|'AMERICAS'|'EUROPE'|'AFRICA'|'APAC';
@@ -61,7 +61,7 @@ export interface LedgerEntry {i:string;y:number;e:number;d:Division;a:string;b:s
 export interface WorldEvent {year:number;type:'debut'|'retirement'|'promotion'|'relegation'|'anniversary'|'upset'|'injury'|'streak'|'title'|'defense'|'vacancy'|'tournament'|'iconic'|'interim'|'eliminator';fighterId:string;description:string;fightId?:string;}
 export interface SeasonSummary {year:number;newcomers:number;retirements:number;promotions:number;relegations:number;averageAge:number;sTierAverage:number;fights?:number;knockouts?:number;submissions?:number;}
 export type TournamentKind='CRUCIBLE'|'SURGE'|'OLYMPIAD';
-export interface TournamentMatch {id:string;stage:string;fighterA:string;fighterB:string;winnerId:string|null;fightId?:string;group?:'A'|'B';}
+export interface TournamentMatch {id:string;stage:string;fighterA:string;fighterB:string;winnerId:string|null;fightId?:string;group?:'A'|'B';finishMethod?:FightMethod;}
 export interface SurgeMoment {wave:number;entrantId:string|null;eliminatedId:string|null;byId:string|null;remaining:string[];minute?:number;message?:string;}
 /** Persistent minute-by-minute state; energy and damage are percentages (0–100). */
 export interface SurgeFighterState {enteredAt:number;energy:number;damage:number;eliminatedAt?:number;eliminatedBy?:string|null;eliminations:number;}
