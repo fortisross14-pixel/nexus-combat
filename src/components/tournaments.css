@@ -81,3 +81,5 @@
 .tg-leg .won{color:var(--teal);font-weight:600}.tg-leg .lost{color:var(--dim)}
 .tg-leg i{color:var(--mute);font-style:normal}
 @media(max-width:900px){.tg-overview{grid-template-columns:1fr}}
+
+.surge-summary-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:7px 9px;border-bottom:1px solid #314356}.surge-summary-row>small{font-size:10px;color:#90b1c4;line-height:1.65;text-align:right}.surge-summary-row .tr-player{flex-shrink:1;min-width:0}

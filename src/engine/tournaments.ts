@@ -1,6 +1,6 @@
-import {abilitiesOf,ageOf,clamp,overallOf} from './career';
+import {abilitiesOf,ageOf,clamp} from './career';
 import {Random} from './random';
-import {TOP_DIVISION,SECOND_DIVISION} from './constants';
+import {TOP_DIVISION,SECOND_DIVISION,BRANDS,REGIONS,REGION_DIVISIONS} from './constants';
 import {resolveTournamentBout,CLOCK,SURGE_ROUND,OLYMPIAD_ROUND,CRUCIBLE_ROUND} from './competition';
 import {FORM_MAX,pinChampionForm} from './belts';
 import type {Fighter,World,Tournament,TournamentKind,TournamentMatch} from './types';
@@ -51,10 +51,29 @@ export function beginTournament(w:World,rng:Random):Tournament{
   participants=[...ranked(w,'top'),...ranked(w,'second'),...alternates].filter(cleared).slice(0,40).map(f=>f.id);
   if(participants.length<40)throw Error('Not enough medically cleared Olympiad entrants');
  }else{
-  // The twenty Royale berths include eligible S-Tier fighters and fit Global D2 reserves
-  // if a contender is medically suspended; never force an injured athlete into the arena.
-  participants=[...ranked(w,'top'),...ranked(w,'second'),...w.fighters.filter(f=>f.status==='active'&&f.division.endsWith('D1')).sort((a,b)=>b.rankingPoints-a.rankingPoints)].filter(f=>eligible(f)&&f.injuryUntil<=now).slice(0,20).map(f=>f.id);
-  if(participants.length<20)throw Error('Not enough medically cleared Royale entrants');
+  // 8 from each brand: its champion and seven ranked contenders. Four continental
+  // champions complete the twenty. Medically unavailable holders are replaced by
+  // the next fit athlete in their own division/region, with no duplicate invitations.
+  const ids:string[]=[];
+  const fit=(f:Fighter)=>eligible(f)&&f.injuryUntil<=now;
+  const add=(list:Fighter[],limit:number)=>{
+   for(const f of list){if(ids.length>=limit)break;if(fit(f)&&!ids.includes(f.id))ids.push(f.id);}
+  };
+  for(const brand of BRANDS){
+   const roster=w.fighters.filter(f=>f.status==='active'&&f.division===TOP_DIVISION[brand]).sort((a,b)=>a.rank-b.rank);
+   const holder=w.crowns?.[brand]?.championId;
+   const prioritized=[...roster.filter(f=>f.id===holder),...roster.filter(f=>f.id!==holder),
+     ...w.fighters.filter(f=>f.status==='active'&&f.division===SECOND_DIVISION[brand]).sort((a,b)=>a.rank-b.rank)];
+   add(prioritized,ids.length+8);
+  }
+  for(const [i,region] of REGIONS.entries()){
+   const belt=(['AMERICAS','EUROPE','AFRICA','APAC'] as const)[i];
+   const champion=w.belts[belt]?.championId;
+   const candidates=w.fighters.filter(f=>f.status==='active'&&f.division===REGION_DIVISIONS[region][0]).sort((a,b)=>a.rank-b.rank);
+   add([...candidates.filter(f=>f.id===champion),...candidates.filter(f=>f.id!==champion)],ids.length+1);
+  }
+  if(ids.length!==20)throw Error('Not enough medically cleared Royale entrants');
+  participants=ids;
  }
  const t:Tournament={id:`${kind.toLowerCase()}-${w.year}`,kind,year:w.year,status:'active',participants,matches:[],stage:0,winnerId:null};
  if(kind==='CRUCIBLE'){
@@ -69,7 +88,10 @@ export function beginTournament(w:World,rng:Random):Tournament{
   // Seeds #25–40 enter a preliminary round. The top 24 wait in the round of 32.
   makeMatches(t,'Prelim',Array.from({length:8},(_,i)=>[participants[24+i],participants[39-i]] as [string,string]));
  }else{
-  t.surgeOrder=rng.shuffle([...participants]);t.surgeActive=[];t.surgeMoments=[];
+  t.surgeOrder=rng.shuffle([...participants]);
+  t.surgeActive=t.surgeOrder.slice(0,2);
+  t.surgeMoments=t.surgeActive.map((id,i)=>({wave:i+1,minute:0,entrantId:id,eliminatedId:null,byId:null,remaining:t.surgeActive!.slice(0,i+1),message:`Opening entrant ${i+1}`}));
+  t.surgeState={minute:0,fighters:Object.fromEntries(t.surgeActive.map(id=>[id,{enteredAt:0,energy:100,damage:0,eliminations:0}])),lastEvent:'The opening two fighters enter the arena.'};
  }
  w.tournaments.push(t);w.activeTournamentId=t.id;w.lastFightIds=[];
  return t;
@@ -156,29 +178,99 @@ export function advanceTournamentBout(w:World,rng:Random):string|null{
  if(t.winnerId!==null)awardWinner(w,t);
  return fight.id;
 }
-function surgeStrength(f:Fighter,w:World,activeTurns:number){
- const sk=abilitiesOf(f,w.year),age=ageOf(f,w.year);
- return overallOf(f,w.year)*.20+sk.Stamina*.25+sk.Clinch*.16+sk.Footwork*.10+sk.Defense*.10+
-  clamp((f.weight-80)*.09,-2,7)+(f.mentality==='Strategist'?4.5:f.mentality==='Cold'?2:f.mentality==='Crazy'?-2:0)-activeTurns*1.3-Math.max(0,age-37)*.6;
-}
-function advanceSurge(w:World,rng:Random,t:Tournament){
- const order=t.surgeOrder!,moments=t.surgeMoments!,active=t.surgeActive!;
- let entrantId:string|null=null,eliminatedId:string|null=null,byId:string|null=null;
- if(moments.length<order.length){entrantId=order[moments.length];active.push(entrantId);}
- // Dynamic attrition. Early entrants are exposed longer. Nobody wins before all twenty have entered.
- if((moments.length>=order.length&&active.length>1)||(active.length>=4&&(active.length>=7||moments.length>4&&rng.next()<.43))){
-  const values=active.map(id=>{const f=w.fighters.find(x=>x.id===id)!;const joinedAt=order.indexOf(id);return {id,score:surgeStrength(f,w,moments.length-joinedAt)+rng.float(-19,19)};}).sort((a,b)=>a.score-b.score);
-  eliminatedId=values[0].id;
-  const other=active.filter(id=>id!==eliminatedId).map(id=>({id,score:surgeStrength(w.fighters.find(f=>f.id===id)!,w,1)+rng.float(-6,6)})).sort((a,b)=>b.score-a.score);
-  byId=other[0]?.id||null;
-  active.splice(active.indexOf(eliminatedId),1);
+/** Restore an open Royale from pre-v1.5.2 saves, preserving its published eliminations. */
+function ensureSurgeState(t:Tournament){
+ if(t.surgeState)return t.surgeState;
+ const moments=t.surgeMoments??[],order=t.surgeOrder??[],entered=new Map<string,number>();
+ // Legacy Royale added a fighter each wave; approximate the broadcast clock while
+ // preserving its entrants, eliminations and winner history.
+ for(let i=0;i<moments.length;i++)if(moments[i].entrantId)entered.set(moments[i].entrantId!,Math.max(0,(i-1)*3));
+ const minute=Math.max(0,(Math.min(order.length,moments.length)-2)*3)+Math.max(0,moments.length-order.length);
+ const eliminated=new Map<string,{at:number;by:string|null}>();
+ for(let i=0;i<moments.length;i++)if(moments[i].eliminatedId)eliminated.set(moments[i].eliminatedId!,{at:Math.min(minute,Math.max(0,(i-1)*3)),by:moments[i].byId});
+ const fighters:NonNullable<Tournament['surgeState']>['fighters']={};
+ for(const [id,enteredAt] of entered){const elapsed=Math.max(0,(eliminated.get(id)?.at??minute)-enteredAt);
+  fighters[id]={enteredAt,energy:clamp(100-elapsed*1.4,8,100),damage:clamp(elapsed*.9,0,98),eliminations:moments.filter(m=>m.byId===id).length,...(eliminated.has(id)?{eliminatedAt:eliminated.get(id)!.at,eliminatedBy:eliminated.get(id)!.by}:{})};
  }
- moments.push({wave:moments.length+1,entrantId,eliminatedId,byId,remaining:[...active]});
- if(moments.length>=order.length&&active.length===1){t.winnerId=active[0];t.runnerUpId=eliminatedId??undefined;t.status='complete';}
+ t.surgeState={minute,fighters,lastEvent:'Resumed from the previous Royale save.'};return t.surgeState;
+}
+const surgeAbility=(f:Fighter,w:World)=>{
+ const sk=abilitiesOf(f,w.year);
+ return {sk,defense:sk.Defense*.37+sk.Footwork*.23+sk.Clinch*.23+sk.Takedowns*.17,
+  offense:sk.Clinch*.32+sk.Takedowns*.24+sk.Hands*.16+sk.Stamina*.14+sk.Footwork*.14,
+  survival:(f.mentality==='Strategist'?7:f.mentality==='Cold'?2:f.mentality==='Crazy'?-2:0)+clamp((f.weight-82)*.035,-2,3)};
+};
+/** Simulate precisely one minute; all published state is generated here, not by UI playback. */
+function advanceSurge(w:World,rng:Random,t:Tournament){
+ const state=ensureSurgeState(t),order=t.surgeOrder!,active=t.surgeActive!,moments=t.surgeMoments!;
+ state.minute++;const minute=state.minute;
+ let entrantId:string|null=null,eliminatedId:string|null=null,byId:string|null=null;
+ // Initial two enter at 0:00; #3 at 3:00, #4 at 6:00, ... #20 at 54:00.
+ if(minute%3===0&&Object.keys(state.fighters).length<order.length){
+  entrantId=order[Object.keys(state.fighters).length];
+  state.fighters[entrantId]={enteredAt:minute,energy:100,damage:0,eliminations:0};active.push(entrantId);
+ }
+ const lookup=new Map(w.fighters.map(f=>[f.id,f]));
+ const abilities=new Map(active.map(id=>[id,surgeAbility(lookup.get(id)!,w)]));
+ const recent=active.length;
+ const pressure=clamp((recent-2)/9,0,1);
+ // Effort, absorbing blows and repeatedly escaping bad positions drain energy.
+ for(const id of active){
+  const f=lookup.get(id)!,a=abilities.get(id)!,s=state.fighters[id];
+  const stamina=a.sk.Stamina;const strategy=f.mentality==='Strategist';
+  const effort=clamp(rng.float(.56,1.32)+(f.mentality==='Bold'?.22:f.mentality==='Crazy'?.34:strategy?-.21:0),.26,1.65);
+  const targeted=clamp(rng.float(.3,1.15)+pressure*.34+(s.damage/100)*.16,.15,1.75);
+  const staminaFactor=clamp(1.60-(stamina-70)*.021,.84,1.85);
+  // Fighters aren't trading blows every minute of a 20-person melee. Clever
+  // survivors hide, circle, recover and choose their exchanges selectively.
+  const exposure=clamp(rng.float(.30,.95)+(strategy?-.19:0)+(f.mentality==='Crazy'?.15:0),.08,1.25);
+  const exertion=(.35+effort*.60+targeted*.28+pressure*.25)*staminaFactor*exposure;
+  const recovery=(strategy&&rng.next()<.34?.32:0)+(stamina>=95&&exposure<.40?.14:0);
+  s.energy=+clamp(s.energy-exertion+recovery,0,100).toFixed(1);
+  const defensiveReduction=clamp((a.defense-68)*.011,0,.32);
+  const incoming=(.25+targeted*.88+pressure*.60)*(1-defensiveReduction)*(strategy?.65:1)*exposure;
+  const exhausted=s.energy<24?1.35:s.energy<45?1.1:1;
+  const impact=rng.next()<.07? rng.float(2,7)*(strategy?.57:1):0;
+  s.damage=+clamp(s.damage+incoming*exhausted*rng.float(.68,1.25)+impact,0,100).toFixed(1);
+ }
+ // The longer the fight, the higher the attrition; new arrivals get less damage,
+ // but are never granted guaranteed survival. The simulation does not predetermine a winner.
+ if(active.length>1){
+  const allEntered=Object.keys(state.fighters).length===order.length;
+  const chance=allEntered?clamp(.30+(minute-54)*.018,.30,.85):
+    active.length>=9?.48:active.length>=6?.36:active.length>=4?.23:.055;
+  if(rng.next()<chance){
+   const scores=active.map(id=>{
+    const a=abilities.get(id)!,s=state.fighters[id];
+    const protectedAbility=(a.defense*.55+a.sk.Stamina*.22+a.offense*.23);
+    // Damage/fatigue matter, but a tactical elite survivor can overcome a
+    // longer exposure. Randomness gives every fighter an upset possibility.
+    const danger=(s.damage*.27+(100-s.energy)*.22+(94-protectedAbility)*1.38-a.survival*1.55+
+      Math.max(0,minute-s.enteredAt-30)*.017+rng.float(-24,24));
+    return {id,danger};
+   }).sort((a,b)=>b.danger-a.danger);
+   // Strong pressure tends to expose the weakest, but random finishes persist.
+   eliminatedId=scores[rng.next()<.60?0:Math.min(scores.length-1,rng.int(0,Math.min(5,scores.length-1)))].id;
+   const defeated=state.fighters[eliminatedId];
+   const options=active.filter(id=>id!==eliminatedId).map(id=>{
+    const a=abilities.get(id)!,s=state.fighters[id];
+    return {id,score:a.offense*.52+a.sk.Stamina*.14+a.survival*.5+s.energy*.14-s.damage*.16+rng.float(-28,28)};
+   }).sort((a,b)=>b.score-a.score);
+   byId=options[rng.next()<.72?0:rng.int(0,Math.min(options.length-1,2))]?.id??null;
+   defeated.eliminatedAt=minute;defeated.eliminatedBy=byId;
+   if(byId)state.fighters[byId].eliminations++;
+   active.splice(active.indexOf(eliminatedId),1);
+  }
+ }
+ let message=entrantId?`${lookup.get(entrantId)?.name} enters the arena at ${minute}:00.`:'The action continues around the arena.';
+ if(eliminatedId)message=`${lookup.get(eliminatedId)?.name} eliminated${byId?` by ${lookup.get(byId)?.name}`:''} at ${minute}:00.${entrantId?` ${lookup.get(entrantId)?.name} also enters.`:''}`;
+ state.lastEvent=message;
+ moments.push({wave:moments.length+1,minute,entrantId,eliminatedId,byId,remaining:[...active],message});
+ if(Object.keys(state.fighters).length>=20&&active.length===1){t.winnerId=active[0];t.runnerUpId=eliminatedId??undefined;t.status='complete';}
 }
 /** Resolves all matches while retaining only the already-earned bracket outcomes and records. */
 export function finishTournament(w:World,rng:Random){
  let guard=0;
- while(currentTournament(w)&&guard++<90)advanceTournamentBout(w,rng);
+ while(currentTournament(w)&&guard++<400)advanceTournamentBout(w,rng);
  if(currentTournament(w))throw Error('Tournament failed to finish');
 }

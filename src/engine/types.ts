@@ -62,8 +62,12 @@ export interface WorldEvent {year:number;type:'debut'|'retirement'|'promotion'|'
 export interface SeasonSummary {year:number;newcomers:number;retirements:number;promotions:number;relegations:number;averageAge:number;sTierAverage:number;fights?:number;knockouts?:number;submissions?:number;}
 export type TournamentKind='CRUCIBLE'|'SURGE'|'OLYMPIAD';
 export interface TournamentMatch {id:string;stage:string;fighterA:string;fighterB:string;winnerId:string|null;fightId?:string;group?:'A'|'B';}
-export interface SurgeMoment {wave:number;entrantId:string|null;eliminatedId:string|null;byId:string|null;remaining:string[];}
-export interface Tournament {id:string;kind:TournamentKind;year:number;status:'active'|'complete';participants:string[];matches:TournamentMatch[];stage:number;winnerId:string|null;runnerUpId?:string;surgeOrder?:string[];surgeActive?:string[];surgeMoments?:SurgeMoment[];}
+export interface SurgeMoment {wave:number;entrantId:string|null;eliminatedId:string|null;byId:string|null;remaining:string[];minute?:number;message?:string;}
+/** Persistent minute-by-minute state; energy and damage are percentages (0–100). */
+export interface SurgeFighterState {enteredAt:number;energy:number;damage:number;eliminatedAt?:number;eliminatedBy?:string|null;eliminations:number;}
+export interface SurgeState {minute:number;fighters:Record<string,SurgeFighterState>;lastEvent:string;}
+
+export interface Tournament {id:string;kind:TournamentKind;year:number;status:'active'|'complete';participants:string[];matches:TournamentMatch[];stage:number;winnerId:string|null;runnerUpId?:string;surgeOrder?:string[];surgeActive?:string[];surgeMoments?:SurgeMoment[];surgeState?:SurgeState;}
 export interface IconicMoment {id:string;year:number;category:'Dynasty'|'Comeback'|'Upset'|'Double'|'Olympiad'|'Surge';score:number;title:string;description:string;subjectIds:string[];fightId?:string;}
 export interface SeasonAwards {year:number;fighterOfYear:string|null;breakthrough:string|null;fightOfYear:string|null;knockoutOfYear:string|null;submissionOfYear:string|null;upsetOfYear:string|null;}
 export interface HallInductee {fighterId:string;inductedYear:number;score:number;reason:string;}
