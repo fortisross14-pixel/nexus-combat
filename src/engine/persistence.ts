@@ -59,3 +59,32 @@ async function commitWorld(world:World):Promise<void>{
 /** Serialize writes so a slower earlier save never overwrites a later state. */
 let writeQueue:Promise<void>=Promise.resolve();
 export function storeWorldDatabase(world:World):Promise<void>{writeQueue=writeQueue.catch(()=>{}).then(()=>commitWorld(world));return writeQueue;}
+
+/** Independent durable universe slots. Never rely on localStorage for large saves. */
+export async function readUniverseSlots():Promise<(World|null)[]>{
+ const db=await database();
+ try{
+  const tx=db.transaction(STORE,'readonly');const store=tx.objectStore(STORE);
+  const records=await Promise.all([0,1,2].map(i=>asPromise(store.get(`slot-${i}`))));
+  return records.map(value=>value?upgradeWorld(value):null);
+ }finally{db.close();}
+}
+export async function storeUniverseSlot(slot:number,world:World):Promise<void>{
+ if(!Number.isInteger(slot)||slot<0||slot>2)throw Error('Invalid universe slot');
+ const db=await database();try{
+  const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(world,`slot-${slot}`);await done(tx);
+ }finally{db.close();}
+}
+export async function deleteUniverseSlot(slot:number):Promise<void>{
+ const db=await database();try{
+  const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(`slot-${slot}`);await done(tx);
+ }finally{db.close();}
+}
+/** Serializes slot operations so older snapshots cannot overwrite newer ones. */
+let slotQueue:Promise<void>=Promise.resolve();
+export function queueUniverseSlot(slot:number,world:World):Promise<void>{
+ slotQueue=slotQueue.catch(()=>{}).then(()=>storeUniverseSlot(slot,world));return slotQueue;
+}
+export function queueDeleteUniverseSlot(slot:number):Promise<void>{
+ slotQueue=slotQueue.catch(()=>{}).then(()=>deleteUniverseSlot(slot));return slotQueue;
+}

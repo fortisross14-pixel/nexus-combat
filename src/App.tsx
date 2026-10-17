@@ -32,7 +32,7 @@ import {CareerChart,RadarChart} from './components/Charts';
 import {MENTAL_DESCRIPTIONS,RARITY_COLORS,REGIONS,SKILLS,START_YEAR,STYLES,STYLE_DESCRIPTIONS} from './engine/constants';
 import {abilitiesOf,ageOf,baseOf,conditionLabel,overallOf} from './engine/career';
 import {draftMove,draftAuto,draftFinish,createManagedWorld,advanceYears,advanceToBigEvent,hasPendingCard,prepareNextEvent,resolveCurrentEvent,resolveTournamentAction,resolveTournamentStage,resolveWholeTournament,exportWorld,loadWorld,STORAGE_KEY,upgradeWorld} from './engine/world';
-import {readWorldDatabase,storeWorldDatabase} from './engine/persistence';
+import {readWorldDatabase,storeWorldDatabase,readUniverseSlots,queueUniverseSlot,queueDeleteUniverseSlot} from './engine/persistence';
 import type {Fight,Division,Fighter,World,Rarity,WorldEvent} from './engine/types';
 
 type Page='Dashboard'|'Statistics'|'Event Calendar'|'Tournaments'|'Fight Night'|'Fight Center'|'Divisions'|'Fighters'|'Offseason'|'World History';
@@ -48,7 +48,7 @@ function NewWorldDialog({onCancel,onCreate}:{onCancel:()=>void;onCreate:(seed:nu
 export function App(){
   const [world,setWorld]=useState<World>(()=>loadWorld());
   const [universeOpen,setUniverseOpen]=useState(true);const [activeSlot,setActiveSlot]=useState<number|null>(null);
-  const [slots,setSlots]=useState<(World|null)[]>(()=>[0,1,2].map(i=>{try{const raw=localStorage.getItem(`nexus-universe-${i}`);return raw?upgradeWorld(JSON.parse(raw)):null;}catch{return null;}}));
+  const [slots,setSlots]=useState<(World|null)[]>([null,null,null]);
   const [page,setPage]=useState<Page>('Dashboard');
   const [selectedId,setSelectedId]=useState<string|null>(null);const [selectedFightId,setSelectedFightId]=useState<string|null>(null);const [profileTab,setProfileTab]=useState<ProfileTab>('Overview');
   const [division,setDivision]=useState<Division>('NOVA S');const [search,setSearch]=useState('');const [filterStyle,setFilterStyle]=useState('All styles');
@@ -59,17 +59,36 @@ export function App(){
   const [compareId,setCompareId]=useState<string|null>(null);const [compareWith,setCompareWith]=useState<string|null>(null);const [followedOnly,setFollowedOnly]=useState(false);
   useEffect(()=>setVisibleFighters(80),[search,filterStyle,filterRegion,showAll]);
   const [menuOpen,setMenuOpen]=useState(false);const [finaleYear,setFinaleYear]=useState<number|null>(null);const previousYear=useRef<number|null>(null);const [toast,setToast]=useState('');const [hydrated,setHydrated]=useState(false);const importRef=useRef<HTMLInputElement|null>(null);
-  useEffect(()=>{let current=true;void readWorldDatabase().then(saved=>{if(current&&saved){previousYear.current=saved.year;setWorld(saved);}}).catch(()=>{/* Use legacy/local fallback when IndexedDB is unavailable. */}).finally(()=>{if(current)setHydrated(true);});return()=>{current=false;};},[]);
-  useEffect(()=>{if(!hydrated)return;
-    // Saves are batched: rapid clicks only write the latest state.
-    const timer=setTimeout(()=>{
-      // Early worlds also keep a small synchronous startup backup; IndexedDB is authoritative.
-      try{if(world.year<=START_YEAR+1){const json=JSON.stringify(world);if(json.length<1850000)localStorage.setItem(STORAGE_KEY,json);else localStorage.removeItem(STORAGE_KEY);}else localStorage.removeItem(STORAGE_KEY);}catch{/* Private browsing may disable localStorage. */}
-      try{if(activeSlot!==null)localStorage.setItem(`nexus-universe-${activeSlot}`,JSON.stringify(world));}catch{/* secondary slot save is best effort */}
-      void storeWorldDatabase(world).catch(()=>{setToast('Automatic storage unavailable. Export a JSON backup of this world.');});
-    },450);
-    return()=>clearTimeout(timer);
-  },[world,hydrated]);
+  // Restore ALL slots before displaying the hub. Recover the legacy main save if the
+  // old localStorage slots were silently lost to quota limits.
+  useEffect(()=>{let current=true;(async()=>{
+    try{
+      const [savedSlots,legacyMain]=await Promise.all([readUniverseSlots(),readWorldDatabase()]);
+      if(!current)return;
+      const restored=savedSlots.slice();
+      for(let i=0;i<3;i++)if(!restored[i]){
+        try{const raw=localStorage.getItem(`nexus-universe-${i}`);if(raw)restored[i]=upgradeWorld(JSON.parse(raw));}catch{/* oversized/corrupt legacy slot */}
+      }
+      if(legacyMain&&!restored.some(w=>w&&w.seed===legacyMain.seed&&w.year>=legacyMain.year)){
+        const free=restored.findIndex(w=>!w);
+        if(free>=0){restored[free]=legacyMain;await queueUniverseSlot(free,legacyMain);}
+        else setToast('Recovered an older main save. Export your universes before making changes.');
+      }
+      for(let i=0;i<3;i++)if(restored[i]&&!savedSlots[i])await queueUniverseSlot(i,restored[i]!);
+      if(!current)return;
+      setSlots(restored);
+      const first=restored.find(w=>w!==null);
+      if(first){setWorld(first);previousYear.current=first.year;}
+    }catch(e){if(current)setToast('Unable to restore browser saves. Do not create a new world; check browser storage settings.');}
+    finally{if(current)setHydrated(true);}
+  })();return()=>{current=false;};},[]);
+  // Save immediately after every state change. No 450ms debounce that can be lost
+  // on refresh, and never save the unselected placeholder universe.
+  useEffect(()=>{if(!hydrated||activeSlot===null)return;
+    setSlots(old=>old.map((w,i)=>i===activeSlot?world:w));
+    void queueUniverseSlot(activeSlot,world).catch(()=>setToast('SAVE FAILED — export a JSON backup now.'));
+    void storeWorldDatabase(world).catch(()=>{/* Slots are authoritative; main is legacy recovery. */});
+  },[world,hydrated,activeSlot]);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(''),3800);return()=>clearTimeout(timer)},[toast]);
   useEffect(()=>{if(!hydrated)return;if(previousYear.current!==null&&world.year>previousYear.current)setFinaleYear(world.year-1);previousYear.current=world.year;},[world.year,hydrated]);
   const needLegacy=page==='Statistics'||!!selectedId;
@@ -80,9 +99,9 @@ export function App(){
   const selected=selectedId?world.fighters.find(f=>f.id===selectedId):undefined;
   const selectedFight=selectedFightId?getFight(world,selectedFightId):undefined;
   
-  const openUniverse=(slot:number)=>{const saved=slots[slot];if(saved){setWorld(saved);setActiveSlot(slot);setUniverseOpen(false);return;}const fresh=createManagedWorld(20582058+slot*7919);setSlots(old=>old.map((x,i)=>i===slot?fresh:x));setWorld(fresh);setActiveSlot(slot);setUniverseOpen(false);};
-  const createUniverse=(slot:number)=>{const fresh=createManagedWorld(20582058+slot*7919);setSlots(old=>old.map((x,i)=>i===slot?fresh:x));setWorld(fresh);setActiveSlot(slot);setUniverseOpen(false);};
-  const deleteUniverse=(slot:number)=>{try{localStorage.removeItem(`nexus-universe-${slot}`);}catch{}setSlots(old=>old.map((x,i)=>i===slot?null:x));};
+  const openUniverse=(slot:number)=>{if(!hydrated)return;const saved=slots[slot];if(saved){previousYear.current=saved.year;setWorld(saved);setActiveSlot(slot);setUniverseOpen(false);return;}createUniverse(slot);};
+  const createUniverse=(slot:number)=>{if(!hydrated)return;const fresh=createManagedWorld(20582058+slot*7919);previousYear.current=fresh.year;setSlots(old=>old.map((x,i)=>i===slot?fresh:x));setWorld(fresh);setActiveSlot(slot);setUniverseOpen(false);void queueUniverseSlot(slot,fresh).catch(()=>setToast('SAVE FAILED — export a JSON backup now.'));};
+  const deleteUniverse=(slot:number)=>{try{localStorage.removeItem(`nexus-universe-${slot}`);}catch{}setSlots(old=>old.map((x,i)=>i===slot?null:x));void queueDeleteUniverseSlot(slot).catch(()=>setToast('Could not delete saved universe.'));};
   const navigate=(p:Page)=>{setPage(p);setMenuOpen(false);window.scrollTo({top:0,behavior:'smooth'});};
   const openProfile=(id:string)=>{setSelectedId(id);setProfileTab('Overview');};
   const busy=!hydrated||!!staged||!!playback;
@@ -114,6 +133,7 @@ export function App(){
     {heading:'THE CIRCUIT',items:[{name:'Dashboard',label:'Overview',icon:<LayoutDashboard size={19}/>},{name:'Event Calendar',label:'Calendar',icon:<CalendarClock size={19}/>},{name:'Fight Night',label:'Fight Night',icon:<Swords size={19}/>},{name:'Tournaments',label:'Tournaments',icon:<Medal size={19}/>}]},
     {heading:'SCOUT & EXPLORE',items:[{name:'Divisions',label:'Divisions',icon:<Shield size={19}/>},{name:'Fighters',label:'Fighter Database',icon:<Users size={19}/>},{name:'Fight Center',label:'Fight Archive',icon:<BookOpen size={19}/>}]},
     {heading:'THE CHRONICLE',items:[{name:'Statistics',label:'Statistics',icon:<BarChart3 size={19}/>},{name:'Offseason',label:'Offseason',icon:<Activity size={19}/>},{name:'World History',label:'World History',icon:<FileClock size={19}/>}]}];
+  if(universeOpen&&!hydrated)return <div className="game-loading"><strong>RESTORING SAVED UNIVERSES…</strong></div>;
   if(universeOpen)return <UniverseHub slots={slots} onOpen={openUniverse} onCreate={createUniverse} onDelete={deleteUniverse}/>;
   return <div className={`app-frame ${!hydrated?'app-loading':''}`}>
     {menuOpen&&<div className="mobile-scrim" onClick={()=>setMenuOpen(false)}/>}
