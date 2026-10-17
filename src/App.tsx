@@ -31,7 +31,7 @@ import {CALENDAR,ROUNDS_PER_YEAR} from './engine/competition';
 import {CareerChart,RadarChart} from './components/Charts';
 import {MENTAL_DESCRIPTIONS,RARITY_COLORS,REGIONS,SKILLS,START_YEAR,STYLES,STYLE_DESCRIPTIONS} from './engine/constants';
 import {abilitiesOf,ageOf,baseOf,conditionLabel,overallOf} from './engine/career';
-import {draftMove,draftAuto,draftFinish,createManagedWorld,advanceYears,advanceToBigEvent,hasPendingCard,prepareNextEvent,resolveCurrentEvent,resolveTournamentAction,resolveTournamentStage,resolveWholeTournament,exportWorld,loadWorld,STORAGE_KEY,upgradeWorld} from './engine/world';
+import {draftMove,draftAuto,draftFinish,createManagedWorld,advanceYears,advanceToBigEvent,hasPendingCard,prepareNextEvent,resolveCurrentEvent,resolveTournamentAction,resolveTournamentStage,resolveWholeTournament,exportWorld,loadWorld,upgradeWorld} from './engine/world';
 import {readWorldDatabase,storeWorldDatabase,readUniverseSlots,queueUniverseSlot,queueDeleteUniverseSlot} from './engine/persistence';
 import type {Fight,Division,Fighter,World,Rarity,WorldEvent} from './engine/types';
 
