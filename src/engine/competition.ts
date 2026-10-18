@@ -83,42 +83,45 @@ function rivalsPenalty(a:Fighter,b:Fighter,w:World,index:RivalStats){
  const elapsed=CLOCK(w.year,w.round)-entry.last;
  return elapsed<=ROUNDS_PER_YEAR/2?200:elapsed<=ROUNDS_PER_YEAR?30:entry.count>=3?25:8;
 }
-/** A healthy fighter is allocated ONE circuit bout each month. Injured/unfit
-    athletes are medically exempt; nobody is pushed into a second bout to fill a card.
-    Four earlier weekly cards absorb the quota in months with special-event finales. */
+/** Book a genuinely active year: most fighters make 6–8 appearances, rather than
+    fighting every month or waiting for a marquee. The founding week gives everyone
+    a chance to establish a record BEFORE either brand crowns its first champion. */
 export function scheduleDivision(w:World,division:Division,rng:Random,index:RivalStats=buildRivalIndex(w),reserved:Set<string>=new Set()):[string,string][]{
- const now=CLOCK(w.year,w.round),start=MONTH_OF(w.round)*WEEKS+1;
- const fought=new Set<string>();
- for(let i=w.fights.length-1;i>=0;i--){const f=w.fights[i];if(f.year!==w.year||f.roundIndex<start)break;
-  fought.add(f.fighterA);fought.add(f.fighterB);
+ const now=CLOCK(w.year,w.round),week=w.round;
+ const roster=w.fighters.filter(f=>f.status==='active'&&f.division===division);
+ const yearFights=w.fights.filter(f=>f.year===w.year);
+ const appearances=new Map<string,number>(),lastAt=new Map<string,number>();
+ for(const bout of yearFights){
+  for(const id of [bout.fighterA,bout.fighterB]){
+   appearances.set(id,(appearances.get(id)||0)+1);
+   lastAt.set(id,CLOCK(bout.year,bout.roundIndex-1));
+  }
  }
- const monthlyFinale=BIG_OF(MONTH_OF(w.round));
- const remainingEvents=isTournamentSlot(w.year,monthlyFinale)?Math.max(1,WEEKS-1-WEEK_OF(w.round)):Math.max(1,WEEKS-WEEK_OF(w.round));
- const available=w.fighters.filter(f=>f.status==='active'&&f.division===division&&f.condition>=60&&f.injuryUntil<=now&&!fought.has(f.id)&&!reserved.has(f.id));
+ // First two circuit cards together have seven bouts per 14-person division.
+ // Thereafter one fresh outing approximately every seven event-weeks, with
+ // one or two cards to catch up if an injury delayed a previous opportunity.
+ const founding=w.year===2058&&week<=2;
+ const target=founding?1:Math.min(8,1+Math.floor((week+3)/7));
+ const enoughRest=(f:Fighter)=>now-(lastAt.get(f.id)??-999)>= (founding?2:4);
+ const available=roster.filter(f=>f.condition>=60&&f.injuryUntil<=now&&
+  !reserved.has(f.id)&&enoughRest(f)&& (appearances.get(f.id)||0)<target&&
+  (appearances.get(f.id)||0)<8);
  const pairs:[string,string][]=[];
- const quota=Math.ceil(available.length/(remainingEvents*2));
+ // Opening: front-load 4, then 3 pairs so that both title nights have proven winners.
+ // Later: keep cards flexible, allowing up to seven fights per division if required.
+ const quota=founding&&week===0?Math.min(4,Math.floor(available.length/2)):
+  founding&&week===1?7:7;
  const unpaired=new Set(available.map(f=>f.id));
  while(unpaired.size>=2&&pairs.length<quota){
-  const options=available.filter(f=>unpaired.has(f.id)).sort((a,b)=>a.rank-b.rank);
-  // Not always #1 versus #2: distribute seeds across the division for credible movement.
-  const f=options[rng.int(0,Math.min(options.length-1,4))];
-  const ranked=options.filter(g=>g.id!==f.id).map(g=>({g,score:Math.abs(g.rank-f.rank)*1.4+rivalsPenalty(f,g,w,index)+rng.float(0,13)})).sort((a,b)=>a.score-b.score);
+  const options=available.filter(f=>unpaired.has(f.id)).sort((a,b)=>(appearances.get(a.id)||0)-(appearances.get(b.id)||0)||a.rank-b.rank);
+  const f=founding?options[0]:options[rng.int(0,Math.min(options.length-1,4))];
+  const ranked=options.filter(g=>g.id!==f.id).map(g=>({g,
+   // A strong seed should have a fair chance to EARN that opening 1–0 record.
+   score:(founding?Math.abs(Math.abs(g.rank-f.rank)-Math.floor(roster.length/2)):
+    Math.abs(g.rank-f.rank)*1.4)+rivalsPenalty(f,g,w,index)+rng.float(0,founding?2:10)}))
+   .sort((a,b)=>a.score-b.score);
   const opponent=ranked[0]?.g;if(!opponent)break;
   unpaired.delete(f.id);unpaired.delete(opponent.id);pairs.push([f.id,opponent.id]);
- }
- // An odd-sized healthy roster can leave one eligible fighter unmatched.
- // Give that fighter a bout with a recovered athlete whose first monthly fight
- // occurred at least two event-weeks ago, rather than silently skipping them.
- const finalCircuitEvent=isTournamentSlot(w.year,monthlyFinale)?WEEK_OF(w.round)===WEEKS-2:WEEK_OF(w.round)===WEEKS-1;
- if(finalCircuitEvent&&unpaired.size===1){
-  const lone=w.fighters.find(f=>f.id===[...unpaired][0])!;
-  const justNow=new Set<string>();
-  for(const id of w.lastFightIds){const b=w.fights.find(x=>x.id===id);if(b){justNow.add(b.fighterA);justNow.add(b.fighterB);}}
-  const options=w.fighters.filter(f=>f.status==='active'&&f.division===division&&f.id!==lone.id&&
-   f.condition>=65&&f.injuryUntil<=now&&!reserved.has(f.id)&&fought.has(f.id)&&!justNow.has(f.id))
-   .map(f=>({f,score:Math.abs(f.rank-lone.rank)+rivalsPenalty(f,lone,w,index)*.5+rng.float(0,8)}))
-   .sort((a,b)=>a.score-b.score);
-  if(options[0]&&options[0].score<150)pairs.push([lone.id,options[0].f.id]);
  }
  return pairs;
 }
@@ -184,7 +187,12 @@ function resolveBout(w:World,rng:Random,idA:string,idB:string,opts:BoutOptions={
  }
  if(opts.kind==='eliminator'){const victorious=[a,b].find(f=>f.id===result.winnerId);if(victorious){if(!victorious.titlePath||victorious.titlePath.division!==victorious.division)victorious.titlePath={division:victorious.division,wins:0,eliminatorWins:0};victorious.titlePath.eliminatorWins++;}}
  if(result.winnerId===null){a.record.draws++;b.record.draws++;a.record.streak=0;b.record.streak=0;}
- else updateRecord(result.winnerId===a.id?a:b,result.winnerId===a.id?b:a,result.method);
+ else {
+  const defeated=result.winnerId===a.id?b:a;
+  updateRecord(result.winnerId===a.id?a:b,defeated,result.method);
+  for(const brand of BRANDS)if(w.crowns?.[brand].mandatoryId===defeated.id)w.crowns[brand].mandatoryId=null;
+  if(w.titleShot?.fighterId===defeated.id)w.titleShot=null;
+ }
  const sA=shapeShift(a,b,outcomeA===1?'win':outcomeA===0?'loss':'draw',result.method,result.finishRound,w.year,oldStreakA);
  const sB=shapeShift(b,a,outcomeA===0?'win':outcomeA===1?'loss':'draw',result.method,result.finishRound,w.year,oldStreakB);
  a.shape=clamp(a.shape+sA,-FORM_MAX,FORM_MAX);b.shape=clamp(b.shape+sB,-FORM_MAX,FORM_MAX);
@@ -242,12 +250,16 @@ function bookedThisMonth(w:World){
 }
 function availableIn(w:World,division:Division,booked:Set<string>,exclude:Set<string>=new Set()){
  const now=CLOCK(w.year,w.round);
- return w.fighters.filter(f=>f.status==='active'&&f.division===division&&f.condition>=60&&f.injuryUntil<=now&&!booked.has(f.id)&&!exclude.has(f.id)).sort((a,b)=>a.rank-b.rank);
+ const last=new Map<string,number>();
+ for(const bout of w.fights)if(bout.year===w.year){const at=CLOCK(bout.year,bout.roundIndex-1);last.set(bout.fighterA,at);last.set(bout.fighterB,at);}
+ return w.fighters.filter(f=>f.status==='active'&&f.division===division&&
+  f.condition>=60&&f.injuryUntil<=now&&!booked.has(f.id)&&!exclude.has(f.id)&&
+  // Marquees may call back a circuit winner, but never after a bout last week.
+  // A second fight requires reasonable recovery; nobody injured fights twice.
+  (!last.has(f.id)||now-last.get(f.id)!>=2))
+  .sort((a,b)=>a.rank-b.rank);
 }
-/** Best opponent near the top, avoiding stale rematches. */
-function bestOpponent(w:World,a:Fighter,pool:Fighter[],index:RivalStats,rng:Random,spread=.8,rivalWeight=.12){
- return pool.filter(f=>f.id!==a.id).slice(0,8).map(f=>({f,score:Math.abs(f.rank-a.rank)*spread+rivalsPenalty(a,f,w,index)*rivalWeight+rng.float(0,3)})).sort((x,y)=>x.score-y.score)[0]?.f;
-}
+
 /** A new arrival starts unproven in the division. Existing saves use the stored ledger
     only for athletes without a gate; completed promotions explicitly reset it. */
 export function currentDivisionWins(w:World,f:Fighter){
@@ -257,15 +269,18 @@ export function currentDivisionWins(w:World,f:Fighter){
  for(const y of [w.year-1,w.year])for(const e of w.ledger[y]??[])if(!e.t&&e.d===f.division&&e.w===f.id)wins++;
  return wins;
 }
-const earnedContenderSpot=(w:World,f:Fighter)=>currentDivisionWins(w,f)>=1;
-const eligibleTitleChallenger=(w:World,f:Fighter)=>currentDivisionWins(w,f)>=2||((f.titlePath?.eliminatorWins??0)>0&&currentDivisionWins(w,f)>=1);
+const earnedContenderSpot=(w:World,f:Fighter)=>currentDivisionWins(w,f)>=1&&f.record.streak>0;
+const eligibleTitleChallenger=(w:World,f:Fighter)=>currentDivisionWins(w,f)>=1;
+const titleMerit=(w:World,f:Fighter)=>currentDivisionWins(w,f)*100+(f.record.streak>0?55:-70)+f.rankingPoints*.1+f.shape*2-f.rank;
+const byTitleMerit=(w:World,a:Fighter,b:Fighter)=>titleMerit(w,b)-titleMerit(w,a);
+
 /** A brand's title-night bout: title, interim or unification. A guaranteed title shot (won at The Pinnacle) comes first. */
 function bookBrandTitle(w:World,brand:Brand,rng:Random,index:RivalStats,booked:Set<string>):Booking|null{
  const c=w.crowns![brand];
  const pool=availableIn(w,TOP_DIVISION[brand],booked);
  const ok=(id?:string|null)=>!!id&&pool.some(f=>f.id===id);
  const get=(id:string)=>pool.find(f=>f.id===id)!;
- const contenders=(...exclude:(string|null|undefined)[])=>pool.filter(f=>!exclude.includes(f.id)&&eligibleTitleChallenger(w,f));
+ const contenders=(...exclude:(string|null|undefined)[])=>pool.filter(f=>!exclude.includes(f.id)&&eligibleTitleChallenger(w,f)).sort((a,b)=>byTitleMerit(w,a,b));
  const shot=w.titleShot&&w.titleShot.brand===brand&&ok(w.titleShot.fighterId)&&eligibleTitleChallenger(w,get(w.titleShot.fighterId))?w.titleShot.fighterId:null;
  const next=(...exclude:(string|null|undefined)[])=>shot&&!exclude.includes(shot)?get(shot):ok(c.mandatoryId)&&!exclude.includes(c.mandatoryId)&&eligibleTitleChallenger(w,get(c.mandatoryId!))?get(c.mandatoryId!):undefined;
  if(!c.championId){
@@ -288,9 +303,9 @@ function bookBrandTitle(w:World,brand:Brand,rng:Random,index:RivalStats,booked:S
 function bookEliminator(w:World,brand:Brand,rng:Random,index:RivalStats,booked:Set<string>):Booking|null{
  const c=w.crowns![brand];
  const list=availableIn(w,TOP_DIVISION[brand],booked).filter(f=>![c.championId,c.interimId,c.mandatoryId,w.titleShot?.fighterId].includes(f.id)&&earnedContenderSpot(w,f));
- const first=list.slice(0,4).map(f=>({f,score:f.rank-Math.min(3,(f.fame||0)/120)+rng.float(0,1.5)})).sort((x,y)=>x.score-y.score)[0]?.f;
+ const first=[...list].sort((a,b)=>byTitleMerit(w,a,b))[0];
  if(!first)return null;
- const second=bestOpponent(w,first,list,index,rng);
+ const second=[...list].filter(f=>f.id!==first.id).sort((a,b)=>byTitleMerit(w,a,b))[0];
  return second?{a:first.id,b:second.id,kind:'eliminator',brand}:null;
 }
 /** The Pinnacle unifier: NOVA's champion against ONYX's (an interim champion or the top contender stands in). */
@@ -347,7 +362,7 @@ function bookSupremacy(w:World,reserved:Set<string>,eventName:string):PendingFig
 const toPending=(w:World,b:Booking,eventName:string):PendingFight=>{
  const division=w.fighters.find(f=>f.id===b.a)!.division;
  const title=isTitleKind(b.kind);
- return {fighterA:b.a,fighterB:b.b,year:w.year,roundIndex:w.round,division,titleFight:title,eventName,kind:b.kind,...(title&&b.brand?{belt:b.brand as BeltId}:{})};
+ return {fighterA:b.a,fighterB:b.b,year:w.year,roundIndex:w.round,division,titleFight:title,eventName,kind:b.kind,...((title||b.kind==='eliminator')&&b.brand?{belt:b.brand as BeltId}:{})};
 };
 /** How many regular world-tier bouts make the main card around the event's special bouts. The rest are prelims. */
 export const MAIN_CARD=5;
@@ -361,7 +376,7 @@ export function prepareCircuitRound(w:World,rng:Random):void{
  const slot=CALENDAR[w.round];
  if(WEEK_OF(w.round)===0){
   w.marquees=null;w.marqueeReservation=null;w.beltReservations=null;
-  if(!isTournamentSlot(w.year,BIG_OF(month))){const list=planMonth(w,rng,rivals,new Set());if(list.length)w.marquees={year:w.year,month,list};}
+  // Title qualification is earned on this month's circuit, not projected in week one.
   if(isContinentalRound(month*WEEKS+2)){
    const pairs:Partial<Record<BeltId,[string,string]>>={};
    for(const belt of CONTINENTAL_BELTS){const b=bookContinental(w,belt,rivals,rng,new Set());if(b)pairs[belt]=[b.a,b.b];}
@@ -377,9 +392,12 @@ export function prepareCircuitRound(w:World,rng:Random):void{
  const reserved=new Set<string>(protectedIds);
  const specials:PendingFight[]=[],extras:PendingFight[]=[];
  if(slot.kind==='major'){
-  const fit=(id:string)=>{const f=w.fighters.find(x=>x.id===id);return !!f&&f.status==='active'&&f.condition>=60&&f.injuryUntil<=CLOCK(w.year,w.round)&&!booked.has(id);};
-  const taken=new Set<string>(booked);
-  for(const b of plan){
+  // Plan title nights only AFTER the opening circuit has generated legitimate wins.
+  // Earlier circuit bouts are allowed provided recovery and medical checks pass.
+  const fit=(id:string)=>!!availableIn(w,w.fighters.find(x=>x.id===id)!.division,new Set()).find(f=>f.id===id);
+  const taken=new Set<string>();
+  const livePlan=plan.length?plan:planMonth(w,rng,rivals,new Set());
+  for(const b of livePlan){
    let use:Booking|null=fit(b.a)&&fit(b.b)&&!taken.has(b.a)&&!taken.has(b.b)?b:null;
    // A booked fighter got hurt: rebook the same slot from who is fit tonight.
    if(!use){
@@ -389,6 +407,18 @@ export function prepareCircuitRound(w:World,rng:Random):void{
     else if(b.brand)use=bookBrandTitle(w,b.brand,rng,rivals,taken);
    }
    if(use){taken.add(use.a);taken.add(use.b);reserved.add(use.a);reserved.add(use.b);specials.push(toPending(w,use,slot.name));}
+  }
+  // Re-evaluate brand title and challenger spots at the actual marquee.
+  // In the founding season week 1 had no bouts yet, so an advance booking
+  // would otherwise leave ORIGIN or ASCENSION with no championship.
+  const titleBrand=titleBrandAt(w.round);
+  if(titleBrand&&!specials.some(p=>p.titleFight&&p.belt===titleBrand)){
+   const title=bookBrandTitle(w,titleBrand,rng,rivals,taken);
+   if(title){taken.add(title.a);taken.add(title.b);reserved.add(title.a);reserved.add(title.b);specials.unshift(toPending(w,title,slot.name));}
+  }
+  if(titleBrand&&!specials.some(p=>p.kind==='eliminator')){
+   const eliminator=bookEliminator(w,otherBrand(titleBrand),rng,rivals,taken);
+   if(eliminator){taken.add(eliminator.a);taken.add(eliminator.b);reserved.add(eliminator.a);reserved.add(eliminator.b);specials.push(toPending(w,eliminator,slot.name));}
   }
   if(w.round===DOUBLES_ROUND||w.round===PINNACLE_ROUND)specials.push(...bookCrownTie(w,reserved,slot.name));
   if(w.round===PINNACLE_ROUND)specials.push(...bookSupremacy(w,reserved,slot.name));

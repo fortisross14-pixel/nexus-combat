@@ -1,3 +1,4 @@
+import {BrandLogo} from './BrandLogo';
 import {ArrowRight,CalendarClock,Crown,Medal,Swords,Ticket,Trophy,Users} from 'lucide-react';
 import {Avatar} from './Avatar';
 import {Flag} from './Flag';
@@ -61,7 +62,7 @@ export function Overview({world,onFighter,onFight,onEvent,onNav}:{world:World;on
   <div className="ov-columns">
    <LastEvent world={world} onFight={onFight} onFighter={onFighter}/>
    <section className="panel ov-standings"><Heading eyebrow="S DIVISIONS" title="Top of the brands" end={<button className="text-link" onClick={()=>onNav('Divisions')}>Standings <ArrowRight size={14}/></button>}/>
-    {BRANDS.map(b=><div key={b} className="ov-brand-list"><div className="ov-brand-head" style={{color:BRAND_INFO[b].color}}>{b}</div>{world.fighters.filter(x=>x.status==='active'&&x.division===TOP_DIVISION[b]).sort((x,y)=>x.rank-y.rank).slice(0,5).map(x=><FighterLine key={x.id} f={x} world={world} onFighter={onFighter} size={34} right={<><RankTag rank={x.rank}/> <span className="ov-ovr">{overallOf(x,world.year)}</span></>}/>)}</div>)}
+    {BRANDS.map(b=><div key={b} className="ov-brand-list"><div className="ov-brand-head" style={{color:BRAND_INFO[b].color}}><BrandLogo brand={b} size={44}/>{b}</div>{world.fighters.filter(x=>x.status==='active'&&x.division===TOP_DIVISION[b]).sort((x,y)=>x.rank-y.rank).slice(0,5).map(x=><FighterLine key={x.id} f={x} world={world} onFighter={onFighter} size={34} right={<><RankTag rank={x.rank}/> <span className="ov-ovr">{overallOf(x,world.year)}</span></>}/>)}</div>)}
    </section>
   </div>
  </div>;
@@ -73,8 +74,8 @@ function BeltCard({world,belt,state,next,onFighter,big=false}:{world:World;belt:
  const reign=state.reigns.at(-1);
  const nextText=next?`${eventNameAt(next.year,next.round)||CALENDAR[next.round].name} · ${CALENDAR[next.round].month} ${next.year} · ${whenFrom(world,next.year,next.round)}`:'';
  return <div className={`belt-card ${big?'big':''}`}>
-  <div className="belt-card-head"><Crown size={big?20:15}/><span><small>{big?`${belt} · ${BRAND_INFO[belt as Brand]?.tagline??''}`:'CONTINENTAL BELT'}</small><b>{big?`${belt} World Champion`:BELT_NAMES[belt].replace(' Continental Belt','')}</b></span></div>
-  {champ?<button className="belt-holder" onClick={()=>onFighter(champ.id)}><Avatar fighter={champ} size={big?92:58}/><span><b><Flag code={champ.flag}/>{champ.name}</b><small>{champ.style} · {champ.record.wins}-{champ.record.losses}-{champ.record.draws}</small>{reign&&!reign.endYear&&<small>Champion since {reign.startYear} · {reign.defenses} defense{reign.defenses===1?'':'s'} · {reignDuration(world,reign)} days</small>}</span></button>:<div className="belt-vacant">VACANT</div>}
+  <div className="belt-card-head">{big?<BrandLogo brand={belt as Brand} size={55}/>:<Crown size={15}/>}<span><small>{big?`${belt} · ${BRAND_INFO[belt as Brand]?.tagline??''}`:'CONTINENTAL BELT'}</small><b>{big?`${belt} World Champion`:BELT_NAMES[belt].replace(' Continental Belt','')}</b></span></div>
+  {champ?<button className="belt-holder" onClick={()=>onFighter(champ.id)}><Avatar fighter={champ} size={big?92:58}/><span><b><Flag code={champ.flag}/>{champ.name}</b><small>{champ.style} · {champ.mentality} · {champ.record.wins}-{champ.record.losses}-{champ.record.draws}</small>{reign&&!reign.endYear&&<small>Champion since {reign.startYear} · {reign.defenses} defense{reign.defenses===1?'':'s'} · {reignDuration(world,reign)} days</small>}</span></button>:<div className="belt-vacant">VACANT</div>}
   {(interim||mandatory)&&<div className="belt-extra">{interim&&<span>Interim: <b>{interim.name}</b></span>}{mandatory&&<span>Next challenger: <b>{mandatory.name}</b></span>}</div>}
   <div className="belt-next"><Medal size={12}/> Next title fight: {nextText}</div>
  </div>;

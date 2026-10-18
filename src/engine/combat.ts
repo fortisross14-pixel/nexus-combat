@@ -1,6 +1,6 @@
 import {abilitiesOf,ageOf,clamp,overallOf} from './career';
 import {Random} from './random';
-import type {ActionCategory,ExchangeBeat,Fighter,FightAction,FightMethod,FightPosition,RoundReport,Skill,StatLine,Style} from './types';
+import type {ActionCategory,ExchangeBeat,Fighter,FightAction,FightMethod,FightPosition,Mentality,RoundReport,Skill,StatLine,Style} from './types';
 
 /* ───────────────────────────── Tuning ─────────────────────────────
    The displayed win chance is a logistic curve on a rating-point "edge":
@@ -60,12 +60,23 @@ export function oddsBreakdown(a:Fighter,b:Fighter,year:number):OddsBreakdown{
  return {rating,style,size:sizeEdge(a,b),condition:conditionEdge(a,b),total,chance:matchupOdds(a,b,year)};
 }
 
+/** Combat mentality is an actual tactical rule-set, not a cosmetic badge.
+    Energy factor scales every action cost; impact scales landed-strike damage.
+    Defence changes shot avoidance and positional contests. */
+export const MENTALITY_EFFECTS:Record<Mentality,{volume:number;powerShare:number;energyFactor:number;impact:number;defense:number;exposure:number;summary:string}>={
+ Conservative:{volume:-1.05,powerShare:-.06,energyFactor:.77,impact:.92,defense:2.0,exposure:.92,summary:'Measured pace · saves stamina · stronger defence · fewer finishes'},
+ Strategist:{volume:-.15,powerShare:0,energyFactor:.91,impact:1,defense:.7,exposure:1,summary:'Adapts rhythm · efficient exchanges · improves later in the fight'},
+ Bold:{volume:.55,powerShare:.08,energyFactor:1.12,impact:1.11,defense:-.4,exposure:1.10,summary:'Presses forward · more power · higher fatigue and counter risk'},
+ Crazy:{volume:1.35,powerShare:.12,energyFactor:1.34,impact:1.25,defense:-1.8,exposure:1.20,summary:'Violent bursts · major damage and finish potential · burns out quickly'},
+ Cold:{volume:0,powerShare:.02,energyFactor:.96,impact:1.02,defense:1.1,exposure:.97,summary:'Composed defence · clinical timing · efficient finishes'},
+};
 /* ───────────────────────────── Combatants ───────────────────────────── */
 type Sk=Record<Skill,number>;
 interface Combatant {
  f:Fighter;idx:0|1;sk:Sk;bonus:number;energy:number;damage:number;rocked:number;
  round:StatLine;total:StatLine;kdTaken:number;
  grappleIntent:number;kickShare:number;powerShare:number;volume:number;power:number;chin:number;
+ energyFactor:number;impact:number;defense:number;
 }
 const logit=(p:number)=>Math.log(p/(1-p));
 const sigmoid=(x:number)=>1/(1+Math.exp(-x));
@@ -79,7 +90,7 @@ function enduranceCost(stamina:number){return clamp(Math.exp((85-stamina)/20),.4
 function eff(c:Combatant,s:Skill){
  const tired=100-c.energy;
  const fatigue=tired*.12+Math.max(0,55-c.energy)*.16+Math.max(0,30-c.energy)*.20;
- return c.sk[s]+c.bonus-fatigue-c.damage*.09-(c.rocked?12:0);
+ return c.sk[s]+c.bonus+((s==='Defense'||s==='Footwork')?c.defense:0)-fatigue-c.damage*.09-(c.rocked?12:0);
 }
 /** Probability that X's offensive skill beats Y's defensive skill, around a base rate. */
 function contest(x:number,y:number,base:number,shift=0){return sigmoid(logit(base)+(x-y)/K+shift);}
@@ -87,14 +98,14 @@ function contest(x:number,y:number,base:number,shift=0){return sigmoid(logit(bas
 function makeCombatant(f:Fighter,idx:0|1,year:number,bonus:number):Combatant{
  const sk=abilitiesOf(f,year);
  const grapplePref=(sk.Takedowns+sk.Clinch)/2-(sk.Hands+sk.Kicks)/2;
- const age=ageOf(f,year);
+ const age=ageOf(f,year),mind=MENTALITY_EFFECTS[f.mentality]??MENTALITY_EFFECTS.Strategist;
  return {f,idx,sk,bonus,energy:100,damage:0,rocked:0,round:emptyStats(),total:emptyStats(),kdTaken:0,
   grappleIntent:clamp(.1+grapplePref*.016,.05,.4),
   kickShare:clamp(.32+(sk.Kicks-sk.Hands)*.02,.1,.7),
-  powerShare:clamp(.24+(f.mentality==='Bold'?.08:0)+(f.mentality==='Crazy'?.06:0),.15,.4),
-  volume:f.mentality==='Bold'?1:f.mentality==='Strategist'?-.3:0,
+  powerShare:clamp(.24+mind.powerShare,.12,.50),
+  volume:mind.volume,energyFactor:mind.energyFactor,impact:mind.impact,defense:mind.defense,
   power:clamp(.72+(Math.max(sk.Hands,sk.Kicks)-60)*.008+(f.weight-85)*.004,.6,1.5),
-  chin:clamp(1.18-(sk.Defense-70)*.01-(f.weight-85)*.002+Math.max(0,age-33)*.035+(f.mentality==='Bold'?.08:0),.55,1.7)};
+  chin:clamp(1.18-(sk.Defense-70)*.01-(f.weight-85)*.002+Math.max(0,age-33)*.035+(mind.exposure-1)*.9,.55,1.7)};
 }
 
 /* ───────────────────────────── Strike catalogue ───────────────────────────── */
@@ -128,7 +139,8 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
  for(let r=1;r<=roundLimit&&!winnerId;r++){
   x.round=emptyStats();y.round=emptyStats();x.rocked=0;y.rocked=0;
   let pos:FightPosition='Stand-up',top:Combatant|null=null,gpos=0;
-  const timeline:ExchangeBeat[]=[];const notes:string[]=[];
+  const timeline:ExchangeBeat[]=[];
+  const notes:string[]=r===1?[`${a.name}: ${a.mentality} — ${MENTALITY_EFFECTS[a.mentality]?.summary??'adaptive fighter'}.`,`${b.name}: ${b.mentality} — ${MENTALITY_EFFECTS[b.mentality]?.summary??'adaptive fighter'}.`]:[];
   const roundDamage=[x.damage,y.damage];
   const lateBonus=(c:Combatant)=>c.f.mentality==='Strategist'&&r>=2?1.5:0;
   for(let ex=0;ex<EXCHANGES&&!winnerId;ex++){
@@ -148,7 +160,7 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
    // just once per exchange. Heavier bodies have a small additional cost.
    const spend=(c:Combatant,load:number)=>{
     const weight=1+Math.max(0,c.f.weight-95)*.004;
-    c.energy=clamp(c.energy-load*enduranceCost(c.sk.Stamina)*weight*.88,2,100);
+    c.energy=clamp(c.energy-load*enduranceCost(c.sk.Stamina)*weight*.88*c.energyFactor,2,100);
    };
    const dealt=(att:Combatant,def:Combatant,amount:number)=>{
     def.damage+=amount;spend(def,amount*.045);
@@ -176,7 +188,7 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
      stat(att,STAT.STR);if(sig)stat(att,STAT.SIG);if(isPower)stat(att,STAT.POW);
      if(rng.next()>=contest(strikeSkill+lateBonus(att),defense+lateBonus(def),clamp(base,.08,.85)))continue;
      stat(att,STAT.STRL);if(sig)stat(att,STAT.SIGL);if(isPower)stat(att,STAT.POWL);
-     const hurt=dmg*(isPower?1.8:1)*att.power*(sig?1:.4);dealt(att,def,hurt);
+     const hurt=dmg*(isPower?1.8:1)*att.power*(sig?1:.4)*att.impact;dealt(att,def,hurt);
      if(sig)act(att,key,'strike');
      if(!isPower)continue;
      // Knockdowns come from clean power shots; accumulated damage and a rocked state make them likelier.
@@ -304,6 +316,10 @@ export function simulateCombat(a:Fighter,b:Fighter,year:number,rng:Random,roundL
    // Baseline exertion and distance-management cost every exchange, even
    // without attacks. Ground escapes and busy flurries add costs above this.
    spend(x,.45);spend(y,.45);
+   if(ex===8)for(const c of both){
+    if(c.f.mentality==='Crazy'&&c.energy<44&&notes.length<4)notes.push(`${c.f.name}'s reckless pace is draining the tank.`);
+    if(c.f.mentality==='Conservative'&&c.energy>70&&notes.length<4)notes.push(`${c.f.name} is preserving energy with a measured defence.`);
+   }
    if(!winnerId){x.rocked=Math.max(0,x.rocked-1);y.rocked=Math.max(0,y.rocked-1);}
    if(record){
     const span=winnerId?Math.max(1,Number(finishTime.split(':')[0])*60+Number(finishTime.split(':')[1])-start):EX_SECONDS;

@@ -1,3 +1,4 @@
+import {BrandLogo} from './BrandLogo';
 import {useEffect,useMemo,useState} from 'react';
 import {ArrowRight,ChevronRight,Crown,Eye,Flame,Play,SkipForward,Swords,Trophy} from 'lucide-react';
 import {Avatar} from './Avatar';
@@ -19,7 +20,7 @@ const divisionName=(d:string)=>divisionLabel(d);
 /** Brand badge (NOVA / ONYX) for a division. */
 export function BrandTag({division}:{division:string}){
  const b=brandOf(division);if(!b)return null;
- return <span className="brand-tag" style={{'--brand':BRAND_INFO[b].color} as React.CSSProperties}>{b}</span>;
+ return <span className="brand-tag" style={{'--brand':BRAND_INFO[b].color} as React.CSSProperties}><BrandLogo brand={b} size={21}/>{b}</span>;
 }
 
 /** What makes a bout worth watching: history between them, streaks, ranks. */
@@ -47,7 +48,7 @@ export function boutTags(world:World,a:Fighter,b:Fighter,p?:Pick<PendingFight,'k
 function Corner({f,world,side,onFighter}:{f:Fighter;world:World;side:'a'|'b';onFighter:(id:string)=>void}){
  return <button className={`card-corner corner-${side}`} onClick={()=>onFighter(f.id)}>
   <Avatar fighter={f} size={74}/>
-  <span className="cc-text"><span className="cc-rank"><BrandTag division={f.division}/><RankTag rank={f.rank}/><small>{brandOf(f.division)?(isTopDivision(f.division)?'S':'II'):divisionName(f.division)}</small></span><b>{f.name}</b><small><Flag code={f.flag}/>{f.country} · {f.style}</small><small className="cc-record">{f.record.wins}-{f.record.losses}-{f.record.draws} · OVR {overallOf(f,world.year)}</small><span className="cc-belts"><BeltChips world={world} id={f.id}/></span></span>
+  <span className="cc-text"><span className="cc-rank"><BrandTag division={f.division}/><RankTag rank={f.rank}/><small>{brandOf(f.division)?(isTopDivision(f.division)?'S':'II'):divisionName(f.division)}</small></span><b>{f.name}</b><small><Flag code={f.flag}/>{f.country} · {f.style} · {f.mentality}</small><small className="cc-record">{f.record.wins}-{f.record.losses}-{f.record.draws} · OVR {overallOf(f,world.year)}</small><span className="cc-belts"><BeltChips world={world} id={f.id}/></span></span>
  </button>;
 }
 function ChanceBar({a,b,chance}:{a:Fighter;b:Fighter;chance:number}){
@@ -85,7 +86,7 @@ export function EventNight({world,onStart,onPrepare,onTournament,onFighter,onFig
  const toggle=(i:number,on:boolean)=>setWatch(old=>{const next=new Set(old);if(on)next.add(i);else next.delete(i);return next;});
  const tb=titleBrandAt(world.round);
  const eyebrow=slot.name==='THE PINNACLE'?'THE BIGGEST NIGHT OF THE YEAR · NOVA v ONYX':tb?`${tb} TITLE NIGHT · ${otherBrand(tb)} TITLE ELIMINATOR`:world.round===DOUBLES_ROUND?'THE DOUBLES CROWN':isBigEvent(world.round)?'MONTHLY BIG EVENT':`${slot.month} · WEEK ${slot.week}`;
- const hero=<section className="night-hero themed en-hero" style={identityStyle(ident)}><div className="eyebrow">{eyebrow}</div><div className="hero-brand" key={special||slot.name}><EventLogo id={ident} size={70}/><h1><EventWordmark id={ident}>{special||slot.name}</EventWordmark></h1></div><p className="ev-tagline">{ident.tagline}</p><p>{slot.month} {world.year} · Event {world.round+1} of {ROUNDS_PER_YEAR} · NOVA and ONYX</p></section>;
+ const hero=<section className="night-hero themed en-hero" style={identityStyle(ident)}><div className="eyebrow">{eyebrow}</div><div className="hero-brand" key={special||slot.name}><EventLogo id={ident} size={70}/><h1><EventWordmark id={ident}>{special||slot.name}</EventWordmark></h1></div><p className="ev-tagline">{ident.tagline}</p><div className="night-brands"><BrandLogo brand="NOVA" size={69}/><BrandLogo brand="ONYX" size={69}/></div><p>{slot.month} {world.year} · Event {world.round+1} of {ROUNDS_PER_YEAR} · NOVA and ONYX</p></section>;
 
  if(!card){
   const tournamentNext=!!kindAt(world.year,world.round)||!!world.activeTournamentId;

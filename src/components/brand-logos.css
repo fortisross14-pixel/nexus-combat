@@ -1,0 +1,18 @@
+
+.nexus-brand-logo{object-fit:contain;flex-shrink:0;display:inline-block;vertical-align:middle;filter:drop-shadow(0 1px 7px rgba(0,0,0,.23))}
+.logo-mark .nexus-brand-logo{width:53px;height:53px;max-width:53px}
+.brand-section .nexus-brand-logo{width:36px;height:36px}
+.brand-eyebrow .brand-identity{display:inline-flex;align-items:center;gap:7px}
+.brand-eyebrow small{display:block}
+.brand-tag{display:inline-flex;align-items:center;gap:3px}
+.brand-tag .nexus-brand-logo{width:21px;height:21px}
+.division-intro-brand{display:inline-flex;align-items:center;gap:12px}
+.division-intro-brand .nexus-brand-logo{width:74px;height:74px}
+.night-brands{display:flex;align-items:center;gap:3px;justify-content:center;margin:9px 0}
+.night-brands .nexus-brand-logo{width:70px;height:70px}
+.mental-chip{display:inline-flex;align-items:center;color:var(--text-secondary,#aab6ca);font-weight:700;letter-spacing:.01em}
+.mental-profile-tip{font-size:13px;line-height:1.5;color:var(--text-secondary,#aab6ca);margin:10px 0 0}
+@media(max-width:700px){.division-intro-brand .nexus-brand-logo{width:52px;height:52px}}
+
+.universe-hub-brand{display:flex;align-items:center;gap:10px}
+.universe-hub-brand .nexus-brand-logo{width:60px;height:60px}

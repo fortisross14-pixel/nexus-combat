@@ -5,7 +5,7 @@ export type Brand = 'NOVA' | 'ONYX';
 export type Division = 'NOVA S' | 'NOVA II' | 'ONYX S' | 'ONYX II' | 'S-TIER' | 'GLOBAL D2' | 'AMERICAS D1' | 'AMERICAS D2' | 'EUROPE D1' | 'EUROPE D2' | 'AFRICA D1' | 'AFRICA D2' | 'APAC D1' | 'APAC D2';
 export type Skill = 'Hands' | 'Kicks' | 'Clinch' | 'Takedowns' | 'Submissions' | 'Ground Control' | 'Defense' | 'Stamina' | 'Footwork';
 export type Style = 'Boxing' | 'Kickboxing' | 'Muay Thai' | 'Karate' | 'Taekwondo' | 'Freestyle Wrestling' | 'Greco-Roman Wrestling' | 'Judo' | 'Brazilian Jiu-Jitsu' | 'Sambo' | 'Sumo' | 'MMA Hybrid';
-export type Mentality = 'Strategist' | 'Bold' | 'Crazy' | 'Cold';
+export type Mentality = 'Strategist' | 'Bold' | 'Crazy' | 'Cold' | 'Conservative';
 export type Archetype = 'Early Phenomenon' | 'Classical Prime' | 'Late Bloomer' | 'Shooting Star' | 'Durable Veteran' | 'Volatile Talent';
 export type Rarity = 'Generational' | 'Legend' | 'Epic' | 'Rare' | 'Uncommon' | 'Common';
 export interface ProfileAppearance {skin:number;hair:number;hairStyle:number;facialHair:number;face:number;expression:number;accessory:number;scar:boolean;}

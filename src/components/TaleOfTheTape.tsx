@@ -5,7 +5,7 @@ import {Crown,Search,Star,X} from 'lucide-react';
 import {Avatar} from './Avatar';
 import type {Fighter,World} from '../engine/types';
 import {ageOf,baseOf,overallOf} from '../engine/career';
-import {oddsBreakdown,styleAdvantage} from '../engine/combat';
+import {oddsBreakdown,styleAdvantage,MENTALITY_EFFECTS} from '../engine/combat';
 import {forecastBout,headToHead,recentResults,tapeStats,finishRates} from '../engine/forecast';
 import {beltsHeld,BELT_SHORT} from '../engine/belts';
 import {headlineOf,eventNameOf} from '../engine/archive';
@@ -55,9 +55,9 @@ export function TaleOfTheTape({world,a,b,rounds=3,onFighter,onFight,compact=fals
  ];
  const factor=(label:string,v:number)=>Math.abs(v)<.05?null:<li key={label}><span>{label}</span><b className={v>0?'tape-a':'tape-b'}>{v>0?a.name.split(' ').at(-1):b.name.split(' ').at(-1)} +{one(Math.abs(v))}</b></li>;
  const Side=({f,belts,form}:{f:Fighter;belts:ReturnType<typeof beltsHeld>;form:ReturnType<typeof recentResults>})=><button className="tape-side" onClick={()=>onFighter?.(f.id)}>
-  <Avatar fighter={f} size={compact?84:112}/><strong>{f.name}</strong><small><Flag code={f.flag}/> {f.country} · {f.style}</small>
+  <Avatar fighter={f} size={compact?84:112}/><strong>{f.name}</strong><small><Flag code={f.flag}/> {f.country} · {f.style} · {f.mentality}</small>
   {belts.length>0&&<span className="tape-belts">{belts.map(bt=><i key={bt}><Crown size={11}/> {BELT_SHORT[bt]}</i>)}</span>}
-  <span className="tape-form">{form.length?form.map((x,i)=><i key={i} className={`form-${x.result}`} title={headlineOf(world,x.entry)}>{x.result}</i>):<em>No bouts yet</em>}</span>
+  <span className="mental-profile-tip">{MENTALITY_EFFECTS[f.mentality]?.summary}</span><span className="tape-form">{form.length?form.map((x,i)=><i key={i} className={`form-${x.result}`} title={headlineOf(world,x.entry)}>{x.result}</i>):<em>No bouts yet</em>}</span>
  </button>;
  return <div className={`tape ${compact?'tape-compact':''}`}>
   <div className="tape-head"><Side f={a} belts={beltsA} form={formA}/><div className="tape-title"><span>TALE OF THE TAPE</span><strong>VS</strong><small>{rounds} rounds</small></div><Side f={b} belts={beltsB} form={formB}/></div>

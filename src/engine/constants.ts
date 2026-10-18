@@ -2,14 +2,14 @@ import type {Brand,Division,Region,Skill,Style,Rarity,Archetype,Mentality} from 
 export const START_YEAR=2058;
 export const SKILLS:readonly Skill[]=['Hands','Kicks','Clinch','Takedowns','Submissions','Ground Control','Defense','Stamina','Footwork'];
 export const STYLES:readonly Style[]=['Boxing','Kickboxing','Muay Thai','Karate','Taekwondo','Freestyle Wrestling','Greco-Roman Wrestling','Judo','Brazilian Jiu-Jitsu','Sambo','Sumo','MMA Hybrid'];
-export const MENTALITIES:readonly Mentality[]=['Strategist','Bold','Crazy','Cold'];
+export const MENTALITIES:readonly Mentality[]=['Strategist','Bold','Crazy','Cold','Conservative'];
 export const ARCHETYPES:readonly Archetype[]=['Early Phenomenon','Classical Prime','Late Bloomer','Shooting Star','Durable Veteran','Volatile Talent'];
 /* ───────────── Brands ─────────────
    Two world-tier brands share event nights but never cross over, except at The Pinnacle and in tournaments. */
 export const BRANDS:readonly Brand[]=['NOVA','ONYX'];
 export const BRAND_INFO:Record<Brand,{name:string;tagline:string;color:string;deep:string}>={
- NOVA:{name:'NOVA',tagline:'Bright lights. Fast hands.',color:'#4fd1ff',deep:'#0b3550'},
- ONYX:{name:'ONYX',tagline:'Forged in the dark.',color:'#ff7a45',deep:'#3a160a'}};
+ NOVA:{name:'NOVA',tagline:'Bright lights. Fast hands.',color:'#ff8b45',deep:'#402010'},
+ ONYX:{name:'ONYX',tagline:'Forged in the dark.',color:'#ba83ff',deep:'#261640'}};
 export const TOP_DIVISION:Record<Brand,Division>={NOVA:'NOVA S',ONYX:'ONYX S'};
 export const SECOND_DIVISION:Record<Brand,Division>={NOVA:'NOVA II',ONYX:'ONYX II'};
 /** Active divisions. */
@@ -54,4 +54,4 @@ export const STYLE_DESCRIPTIONS:Record<Style,string>={
   'MMA Hybrid':'Flexible responses across the entire combat spectrum.'
 };
 export const RARITY_WEIGHTS:readonly (readonly [Rarity,number])[]=[['Common',70],['Uncommon',60],['Rare',35],['Epic',19],['Legend',10],['Generational',3]];
-export const MENTAL_DESCRIPTIONS:Record<Mentality,string>={Strategist:'Reads opponents and adapts. Excellent in long formats.',Bold:'Presses advantages and seeks stoppages, accepts risks.',Crazy:'Unpredictable, explosive and wildly variable.',Cold:'Unshaken under pressure. A clinical finisher.'};
+export const MENTAL_DESCRIPTIONS:Record<Mentality,string>={Strategist:'Reads opponents and adapts. Excellent in long formats.',Bold:'Presses advantages and seeks stoppages, accepts risks.',Crazy:'Unpredictable bursts of heavy damage cost extraordinary energy and invite counters.',Cold:'Unshaken under pressure. A clinical finisher.',Conservative:'Careful defensive pacing preserves stamina and limits risk, but produces fewer attacks.'};
