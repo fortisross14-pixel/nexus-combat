@@ -300,7 +300,7 @@ function bookBrandTitle(w:World,brand:Brand,rng:Random,index:RivalStats,booked:S
  return first&&second?{a:first.id,b:second.id,kind:'interim',brand}:null;
 }
 /** Title eliminator: the strongest contenders (star power breaks near-ties), never champions, the mandatory challenger or a title-shot holder. */
-function bookEliminator(w:World,brand:Brand,rng:Random,index:RivalStats,booked:Set<string>):Booking|null{
+function bookEliminator(w:World,brand:Brand,booked:Set<string>):Booking|null{
  const c=w.crowns![brand];
  const list=availableIn(w,TOP_DIVISION[brand],booked).filter(f=>![c.championId,c.interimId,c.mandatoryId,w.titleShot?.fighterId].includes(f.id)&&earnedContenderSpot(w,f));
  const first=[...list].sort((a,b)=>byTitleMerit(w,a,b))[0];
@@ -341,7 +341,7 @@ function planMonth(w:World,rng:Random,index:RivalStats,booked:Set<string>):Booki
  const list:Booking[]=[];
  const t=bookBrandTitle(w,brand,rng,index,booked);if(t)list.push(t);
  const used=new Set([...booked,...(t?[t.a,t.b]:[])]);
- const e=bookEliminator(w,otherBrand(brand),rng,index,used);if(e)list.push(e);
+ const e=bookEliminator(w,otherBrand(brand),used);if(e)list.push(e);
  return list;
 }
 /** Continental Supremacy: the four continental champions (or each Division I's leader), all against all. */
@@ -403,7 +403,7 @@ export function prepareCircuitRound(w:World,rng:Random):void{
    if(!use){
     if(b.kind==='pinnacle')use=bookUnifier(w,taken);
     else if(b.kind==='contract')use=bookContract(w,taken,new Set());
-    else if(b.kind==='eliminator'&&b.brand)use=bookEliminator(w,b.brand,rng,rivals,taken);
+    else if(b.kind==='eliminator'&&b.brand)use=bookEliminator(w,b.brand,taken);
     else if(b.brand)use=bookBrandTitle(w,b.brand,rng,rivals,taken);
    }
    if(use){taken.add(use.a);taken.add(use.b);reserved.add(use.a);reserved.add(use.b);specials.push(toPending(w,use,slot.name));}
@@ -417,7 +417,7 @@ export function prepareCircuitRound(w:World,rng:Random):void{
    if(title){taken.add(title.a);taken.add(title.b);reserved.add(title.a);reserved.add(title.b);specials.unshift(toPending(w,title,slot.name));}
   }
   if(titleBrand&&!specials.some(p=>p.kind==='eliminator')){
-   const eliminator=bookEliminator(w,otherBrand(titleBrand),rng,rivals,taken);
+   const eliminator=bookEliminator(w,otherBrand(titleBrand),taken);
    if(eliminator){taken.add(eliminator.a);taken.add(eliminator.b);reserved.add(eliminator.a);reserved.add(eliminator.b);specials.push(toPending(w,eliminator,slot.name));}
   }
   if(w.round===DOUBLES_ROUND||w.round===PINNACLE_ROUND)specials.push(...bookCrownTie(w,reserved,slot.name));
