@@ -13,6 +13,7 @@ export function toLedger(f:Fight):LedgerEntry{
  const flags=(f.titleFight?LF.TITLE:0)|(f.titleChange?LF.CHANGE:0)|(f.underdogVictory?LF.UPSET:0)|(f.method==='SD'||f.method==='MD'||f.method==='DRAW'?LF.CLOSE:0)|(f.kind==='interim'||f.kind==='unification'?LF.INTERIM:0)|(f.kind==='eliminator'?LF.ELIMINATOR:0)|(f.kind==='pinnacle'?LF.PINNACLE:0)|(f.kind==='contract'?LF.CONTRACT:0);
  const e:LedgerEntry={i:f.id,y:f.year,e:f.roundIndex,d:f.division,a:f.fighterA,b:f.fighterB,w:f.winnerId,m:f.method,r:f.finishRound,o:Math.round(f.oddsA*1000)/1000,f:flags};
  if(f.tournamentId){e.t=f.tournamentId;e.s=f.tournamentStage;}
+ if(f.tag)e.tag=f.tag;
  if(f.titleFight)e.bt=f.belt||'WORLD';
  return e;
 }
@@ -39,6 +40,7 @@ export function eventNameOf(e:{e:number;t?:string}){return e.t&&!e.t.startsWith(
 const methodText=(m:LedgerEntry['m'])=>m==='SUB'?'submission':m==='KO'?'knockout':m==='TKO'?'technical knockout':m==='UD'?'unanimous decision':m==='SD'?'split decision':m==='MD'?'majority decision':'draw';
 export function headlineOf(w:World,e:LedgerEntry){
  const name=(id:string)=>w.fighters.find(f=>f.id===id)?.name||'Unknown';
+ if(e.tag)return e.tag.winner?`${e.tag.winner} win the ${e.tag.title?'Doubles Crown':e.tag.challengerLock?'challenger lock':'Doubles ranking'} tag match`:`${e.tag.a} and ${e.tag.b} draw the tag match`;
  if(!e.w)return `${name(e.a)} and ${name(e.b)} fight to a draw`;
  return `${name(e.w)} def. ${name(e.w===e.a?e.b:e.a)} · ${methodText(e.m)}, R${e.r}`;
 }
@@ -46,7 +48,7 @@ export function headlineOf(w:World,e:LedgerEntry){
 export function expandLedger(w:World,e:LedgerEntry):Fight{
  return {id:e.i,year:e.y,roundIndex:e.e,division:e.d,fighterA:e.a,fighterB:e.b,winnerId:e.w,method:e.m,finishRound:e.r,finishTime:'',rounds:[],
   rankBeforeA:0,rankBeforeB:0,rankAfterA:0,rankAfterB:0,overallBeforeA:0,overallBeforeB:0,oddsA:e.o,ratingDeltaA:0,ratingDeltaB:0,shapeDeltaA:0,shapeDeltaB:0,conditionDeltaA:0,conditionDeltaB:0,
-  injuredIds:[],underdogVictory:!!(e.f&LF.UPSET),headline:headlineOf(w,e),eventName:eventNameOf(e),titleFight:!!(e.f&LF.TITLE),titleChange:!!(e.f&LF.CHANGE),belt:e.bt,kind:e.f&LF.PINNACLE?'pinnacle':e.f&LF.CONTRACT?'contract':e.f&LF.ELIMINATOR?'eliminator':e.f&LF.INTERIM?'interim':e.f&LF.TITLE?'title':undefined,tournamentId:e.t,tournamentStage:e.s,archived:true};
+  injuredIds:[],underdogVictory:!!(e.f&LF.UPSET),headline:headlineOf(w,e),eventName:eventNameOf(e),titleFight:!!(e.f&LF.TITLE),titleChange:!!(e.f&LF.CHANGE),belt:e.bt,kind:e.f&LF.PINNACLE?'pinnacle':e.f&LF.CONTRACT?'contract':e.f&LF.ELIMINATOR?'eliminator':e.f&LF.INTERIM?'interim':e.f&LF.TITLE?'title':undefined,tournamentId:e.t,tournamentStage:e.s,tag:e.tag,archived:true};
 }
 /** Best available version of a fight: full detail this season, key-fight detail, or the ledger summary. */
 export function getFight(w:World,id:string|null|undefined):Fight|undefined{
@@ -57,7 +59,7 @@ export function getFight(w:World,id:string|null|undefined):Fight|undefined{
  return key||expandLedger(w,e);
 }
 /** All bouts of one fighter (summaries), newest first. */
-export function fighterLedger(w:World,id:string){return ledgerFor(w,e=>e.a===id||e.b===id).reverse();}
+export function fighterLedger(w:World,id:string){return ledgerFor(w,e=>e.a===id||e.b===id||!!e.tag&&[...e.tag.teamA,...e.tag.teamB].includes(id)).reverse();}
 
 /* ───────────── Season close: keep only what history needs ───────────── */
 const KEY_STAGES=new Set(['Semifinal','Final']);

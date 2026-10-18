@@ -33,9 +33,29 @@ function FightStats({fight,a,b}:{fight:Fight;a:Fighter;b:Fighter}){
   {fight.rounds.filter(r=>r.a&&r.b).map(r=><Fragment key={r.number}><div className="rs-head">ROUND {r.number}</div>{rows.filter(([l])=>l!=='Sig. accuracy'&&l!=='Damage dealt').map(([label,f])=><Fragment key={label}><span className="rs-a">{f(r.a!)}</span><small>{label}</small><span className="rs-b">{f(r.b!)}</span></Fragment>)}</Fragment>)}
  </div>;
 }
+/** A tag fight is reported by nation and both teammates, not by its first two starters. */
+function NationalTagReport({fight,world,onClose,onFighter}:{fight:Fight;world:World;onClose:()=>void;onFighter:(id:string)=>void}){
+ const t=fight.tag!;
+ const sides=([ [t.a,t.teamA],[t.b,t.teamB] ] as const);
+ return <div className="combat-backdrop" onClick={onClose}><section className="combat-modal" role="dialog" aria-modal="true" aria-label="National tag-team match report" onClick={e=>e.stopPropagation()}>
+  <div className="combat-modal-head"><span><EventLogo id={identityFor(fight.eventName)} size={26}/> NEXUS · COUNTRY DOUBLES · {fight.year}</span><button onClick={onClose} aria-label="Close fight report"><X size={20}/></button></div>
+  <div className="tag-report-head"><small>{t.title?'DOUBLES CROWN CHAMPIONSHIP':t.challengerLock?'CHALLENGER LOCK · NEXT CROWN TITLE SHOT':'NATIONAL RANKING · TAG TEAM'}</small><h2>One match. Two nations. Four fighters.</h2>
+   <div className="tag-report-teams">{sides.map(([country,ids])=><div key={country} className={`tag-report-nation ${t.winner===country?'tag-victor':''}`}>
+    <h3><Flag code={world.fighters.find(f=>f.id===ids[0])?.flag} size={22}/>{country}</h3>
+    {ids.map(id=>{const f=world.fighters.find(x=>x.id===id);return f?<button key={id} onClick={()=>{onClose();onFighter(id);}}><Avatar fighter={f} size={48}/><span><b>{f.name}</b><small>{f.style} · {f.mentality} · {f.division}</small></span></button>:null;})}
+   </div>)}</div>
+   <div className="tag-report-outcome"><Trophy size={18}/><strong>{t.winner?`${t.winner} WIN`: 'DRAW'}</strong><span>{fight.method} · Round {fight.finishRound}{fight.finishTime?` · ${fight.finishTime}`:''}</span></div>
+  </div>
+  <div className="fight-report-body"><div className="section-heading"><div className="eyebrow">TAG MATCH COMMENTARY</div><h2>Round by round</h2></div>
+   {fight.rounds.length?fight.rounds.map(r=><div key={r.number} className="round-report"><div className="round-report-number">ROUND <strong>{r.number}</strong></div><div className="round-report-detail">{r.notes.map((note,i)=><p key={i}>{note}</p>)}<RoundStats r={r}/></div></div>):<div className="round-report"><p>{fight.headline}. Detailed exchanges are archived after the season.</p></div>}
+   <div className="tag-report-footnote">Doubles results award one team win, and never add artificial individual singles victories. Both partners accumulate fatigue and career experience.</div>
+  </div>
+ </section></div>;
+}
 export function FightReport({fight,world,onClose,onFighter}:{fight:Fight;world:World;onClose:()=>void;onFighter:(id:string)=>void}){
  const [view,setView]=useState<'Commentary'|'Stats'|'Scorecard'>('Commentary');
  useEffect(()=>{const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.stopPropagation();onClose();}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);},[onClose]);
+ if(fight.tag)return <NationalTagReport fight={fight} world={world} onClose={onClose} onFighter={onFighter}/>;
  const a=world.fighters.find(f=>f.id===fight.fighterA),b=world.fighters.find(f=>f.id===fight.fighterB);if(!a||!b)return null;
  const aWon=fight.winnerId===a.id,bWon=fight.winnerId===b.id;
  const decision=fight.method==='UD'||fight.method==='SD'||fight.method==='MD'||fight.method==='DRAW';

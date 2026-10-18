@@ -27,9 +27,10 @@ export type BeltId='NOVA'|'ONYX'|'WORLD'|'AMERICAS'|'EUROPE'|'AFRICA'|'APAC';
 /** pinnacle: the year's NOVA v ONYX unifier · contract: the Pinnacle bout for a guaranteed title shot. */
 export type BoutKind='title'|'interim'|'unification'|'eliminator'|'pinnacle'|'contract';
 export interface PendingFight {fighterA:string;fighterB:string;year:number;roundIndex:number;division:Division;titleFight:boolean;eventName:string;belt?:BeltId;kind?:BoutKind;
- /** Doubles leg: tie id, leg number and the two countries. */tag?:{tie:string;leg:1|2;a:string;b:string;title:boolean};
+ /** One four-fighter match between national tag teams. */tag?:TagMatch;
  /** Continental Supremacy round-robin bout at The Pinnacle. */supremacy?:boolean;
  /** World-tier bouts beyond the main card: resolved with the event, shown as prelim results. */prelim?:boolean;}
+export interface TagMatch {tie:string;a:string;b:string;teamA:[string,string];teamB:[string,string];title:boolean;challengerLock?:boolean;winner?:string|null;}
 export interface CrownReign {fighterId:string;startYear:number;startRound:number;startFightId:string;endYear?:number;endRound?:number;endFightId?:string;defenses:number;
  /** interim: elevated after the champion left · split: carried over from the World Crown when the brands split. */via?:'interim'|'split';}
 export interface CrownState {championId:string|null;reigns:CrownReign[];
@@ -44,11 +45,12 @@ export type ActionCategory = 'strike'|'grapple'|'sub'|'impact'|'finish';
 /** One visible moment inside an exchange. `k` is an action key; text is rendered by the UI. */
 export interface FightAction {t:number;by:0|1;k:string;c:ActionCategory;}
 /** One ~25-second exchange. `sa`/`sb` are cumulative round StatLines for A and B at the end of the exchange. */
-export interface ExchangeBeat {elapsed:number;position:FightPosition;top?:0|1;acts:FightAction[];sa:StatLine;sb:StatLine;staminaA:number;staminaB:number;damageA:number;damageB:number;}
+export interface ExchangeBeat {elapsed:number;position:FightPosition;top?:0|1;activeA?:string;activeB?:string;acts:FightAction[];sa:StatLine;sb:StatLine;staminaA:number;staminaB:number;damageA:number;damageB:number;}
 export interface RoundReport {number:number;scoreA:number;scoreB:number;cards?:[number,number][];a?:StatLine;b?:StatLine;staminaA:number;staminaB:number;notes:string[];timeline?:ExchangeBeat[];
  /** Legacy (≤0.8) fields, still read for old saves. */
  strikesA?:number;strikesB?:number;grapplingA?:number;grapplingB?:number;}
 export interface Fight {tournamentId?:string;tournamentStage?:string;scheduledRounds?:number;id:string;year:number;roundIndex:number;division:Division;fighterA:string;fighterB:string;winnerId:string|null;method:FightMethod;finishRound:number;finishTime:string;rounds:RoundReport[];statsA?:StatLine;statsB?:StatLine;rankBeforeA:number;rankBeforeB:number;rankAfterA:number;rankAfterB:number;overallBeforeA:number;overallBeforeB:number;oddsA:number;ratingDeltaA:number;ratingDeltaB:number;shapeDeltaA:number;shapeDeltaB:number;conditionDeltaA:number;conditionDeltaB:number;injuredIds:string[];injuries?:{fighterId:string;diagnosis:string;weeks:number;severity:string}[];underdogVictory:boolean;headline:string;eventName?:string;titleFight?:boolean;titleChange?:boolean;belt?:BeltId;kind?:BoutKind;
+ /** Full national tag-team participants and team result. */tag?:TagMatch;
  /** True when only the ledger summary survives (no rounds or stats). */
  archived?:boolean;}
 
@@ -56,7 +58,7 @@ export interface Fight {tournamentId?:string;tournamentStage?:string;scheduledRo
  *  i id · y year · e event index (1-based) · d division · a/b fighters · w winner · m method · r finish round
  *  o pre-fight win chance of A · f flags (LEDGER_FLAGS) · t tournament id · s tournament stage */
 export interface LedgerEntry {i:string;y:number;e:number;d:Division;a:string;b:string;w:string|null;m:FightMethod;r:number;o:number;f:number;t?:string;s?:string;
- /** Belt at stake (title, interim and unification bouts). */bt?:BeltId;}
+ /** Belt at stake (title, interim and unification bouts). */bt?:BeltId;tag?:TagMatch;}
 
 export interface WorldEvent {year:number;type:'debut'|'retirement'|'promotion'|'relegation'|'anniversary'|'upset'|'injury'|'streak'|'title'|'defense'|'vacancy'|'tournament'|'iconic'|'interim'|'eliminator';fighterId:string;description:string;fightId?:string;}
 export interface SeasonSummary {year:number;newcomers:number;retirements:number;promotions:number;relegations:number;averageAge:number;sTierAverage:number;fights?:number;knockouts?:number;submissions?:number;}
@@ -116,8 +118,8 @@ export interface DraftState {
  moves:DraftMove[];
 }
 export interface TagReign {country:string;startYear:number;startRound:number;endYear?:number;endRound?:number;defenses:number;fighters:string[];startTie:string;}
-export interface TagTie {id:string;year:number;round:number;a:string;b:string;title:boolean;legs:{fightId:string;a:string;b:string;w:string|null}[];winner:string|null;}
-export interface TagState {ratings:Record<string,number>;champion:string|null;reigns:TagReign[];ties:TagTie[];}
+export interface TagTie {id:string;year:number;round:number;a:string;b:string;title:boolean;legs:{fightId:string;a:string;b:string;w:string|null}[];winner:string|null;matchFightId?:string;teams?:[[string,string],[string,string]];challengerLock?:boolean;}
+export interface TagState {ratings:Record<string,number>;champion:string|null;reigns:TagReign[];ties:TagTie[];lockedChallenger?:{country:string;year:number;round:number;forRound:number};}
 /** The Pinnacle unifier: NOVA champion v ONYX champion. The winner takes the year. */
 export interface PinnacleHonor {year:number;winnerId:string;loserId:string;fightId:string;winnerBrand?:Brand;}
 /** Continental Supremacy: the four continental champions, all against all, at The Pinnacle. */

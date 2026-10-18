@@ -554,12 +554,37 @@ export function migrateV05(raw:unknown):World|null {
  const w={...structuredClone(raw as World),version:'0.6.0'} as unknown as World;
  return validateLegacyWorld(migrateEightRound(w))?w:null;
 }
+/** A v1.6 save may be sitting on a prepared doubles card made of two 1v1 legs.
+    Rebuild those two slots as one 2v2 match without wiping the card or the save. */
+function upgradePendingNationalTeams(w:World){
+ const card=w.pendingCard;
+ if(!card?.some(p=>p.tag&&!Array.isArray(p.tag.teamA)))return;
+ const output:typeof card=[];const seen=new Set<string>();
+ for(const p of card){
+  const legacy=p.tag&&!Array.isArray(p.tag.teamA)?p.tag:null;
+  if(!legacy){output.push(p);continue;}
+  if(seen.has(legacy.tie))continue;
+  seen.add(legacy.tie);
+  const matching=card.filter(q=>q.tag?.tie===legacy.tie);
+  const squadA=matching.map(m=>m.fighterA);
+  const squadB=matching.map(m=>m.fighterB);
+  // The second leg is normally present. If an old save only persisted one,
+  // select a fit partner from the same country rather than inventing a fighter.
+  for(const [country,ids] of [[legacy.a,squadA],[legacy.b,squadB]] as const){
+   if(ids.length<2){const teammate=w.fighters.find(f=>f.country===country&&f.status==='active'&&!ids.includes(f.id));if(teammate)ids.push(teammate.id);}
+  }
+  if(squadA.length<2||squadB.length<2)continue;
+  output.push({...p,titleFight:false,tag:{tie:legacy.tie,a:legacy.a,b:legacy.b,teamA:[squadA[0],squadA[1]],teamB:[squadB[0],squadB[1]],title:legacy.title}});
+ }
+ w.pendingCard=output;w.pendingFight=output[0]??null;
+}
 /** Fill in structures added after a save was written (belts, player state). */
 function ensureCurrent(w:World):World{
  w.belts??=emptyBelts();w.beltReservations??=null;
  w.user??={followed:[],picks:[],pendingPick:null};
  splitIntoBrands(w);
  w.tag??=emptyTag();w.pinnacle??=[];w.supremacy??=[];
+ upgradePendingNationalTeams(w);
  // Played saves are managed: the player runs the offseason Draft Room.
  w.manager??=true;w.draft??=null;
  for(const b of [w.crown,...Object.values(w.crowns!),...Object.values(w.belts)]){b.interimId??=null;b.interimReigns??=[];b.mandatoryId??=null;}

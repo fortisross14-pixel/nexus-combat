@@ -33,9 +33,9 @@ export function seasonAchievements(world:World,f:Fighter,year:number){
  if(olympiad){const matches=olympiad.matches.filter(m=>!!m.fightId&&(m.fighterA===f.id||m.fighterB===f.id));const last=matches.at(-1);
   lines.push({label:'OLYMPIAD',description:olympiad.winnerId===f.id?'Gold medalist':`${last?.stage??'Awaiting first match'} · ${matches.filter(m=>m.winnerId===f.id).length} wins`});
  }
- const tagTies=(world.tag?.ties??[]).filter(t=>t.year===year&&(t.legs.some(l=>l.a===f.id||l.b===f.id)));
- if(tagTies.length){const legs=tagTies.flatMap(t=>t.legs.filter(l=>l.a===f.id||l.b===f.id));const r=result(legs.map(l=>({w:l.w} as typeof entries[number])));
-  lines.push({label:'DOUBLES',description:`${r.wins}–${r.losses}–${r.draws} · ${tagTies.filter(t=>t.winner===f.country).length} ties won`});}
+ const tagTies=(world.tag?.ties??[]).filter(t=>t.year===year&&(t.teams?.some(team=>team.includes(f.id))||t.legs.some(l=>l.a===f.id||l.b===f.id)));
+ if(tagTies.length){const victories=tagTies.filter(t=>t.winner===f.country).length,draws=tagTies.filter(t=>!t.winner).length;
+  lines.push({label:'DOUBLES',description:`${victories}–${tagTies.length-victories-draws}–${draws} national tag-team matches · ${victories} won`});}
  const allBelts:(readonly [BeltId,CrownReign[]])[]=[...BRANDS.map(b=>[b,world.crowns?.[b]?.reigns??[]] as const),...CONTINENTAL_BELTS.map(b=>[b,world.belts[b]?.reigns??[]] as const),['WORLD',world.crown.reigns]];
  for(const [belt,reigns] of allBelts)for(const reign of reigns){if(reign.fighterId!==f.id)continue;
   const start=reign.startYear+(Math.max(0,reign.startRound-1)/48),end=reign.endYear!==undefined?reign.endYear+Math.max(0,(reign.endRound??1)-1)/48:world.year+world.round/48;

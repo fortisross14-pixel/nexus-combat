@@ -10,6 +10,7 @@ const LABELS:Record<string,string>={
 };
 /** Short broadcast caption for an action key (e.g. "Hook!", "Armbar attempt!", "RNC escaped!"). */
 export function actionLabel(k:string):string{
+ if(k.startsWith('tag:'))return `TAG! ${k.slice(4)} enters`;
  if(LABELS[k])return LABELS[k];
  const m=/^(.*)-(att|esc)$/.exec(k);
  if(m){const name=SUB_NAMES[m[1]]||m[1];return m[2]==='att'?`${name} attempt!`:`${name} escaped!`;}
@@ -19,6 +20,7 @@ export function actionLabel(k:string):string{
 export function actionSentence(a:FightAction,nameA:string,nameB:string):string{
  const me=a.by===0?nameA:nameB,them=a.by===0?nameB:nameA;
  const k=a.k;
+ if(k.startsWith('tag:'))return `TAG! ${k.slice(4)} steps into the fight for their country.`;
  if(k==='ko')return `${me} lands the knockout blow! ${them} is out cold.`;
  if(k==='tko')return `${me} unloads until the referee waves it off!`;
  if(k==='tap')return `${me} locks it in — ${them} taps out!`;

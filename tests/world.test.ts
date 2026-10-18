@@ -103,8 +103,14 @@ describe('NEXUS v0.6 — calendar, medical system, title longevity and rarity',(
   const tag=w.tag!;
   expect(tag.ties.filter(t=>t.year===2058&&!t.title).length).toBeGreaterThan(15);
   const crown=tag.ties.filter(t=>t.title);expect(crown.map(t=>t.round)).toEqual([23,47]);
-  for(const t of tag.ties){expect(t.legs).toHaveLength(2);for(const l of t.legs){
-   expect(w.fighters.find(f=>f.id===l.a)!.country).toBe(t.a);expect(w.fighters.find(f=>f.id===l.b)!.country).toBe(t.b);}}
+  for(const t of tag.ties){
+   expect(t.matchFightId).toBeTruthy();expect(t.teams).toHaveLength(2);
+   expect(t.legs).toHaveLength(0); // Not two individual bouts.
+   const ids=[...(t.teams?.[0]??[]),...(t.teams?.[1]??[])];
+   expect(new Set(ids).size).toBe(4);
+   for(const id of t.teams?.[0]??[])expect(w.fighters.find(f=>f.id===id)!.country).toBe(t.a);
+   for(const id of t.teams?.[1]??[])expect(w.fighters.find(f=>f.id===id)!.country).toBe(t.b);
+  }
   expect(tag.champion).not.toBeNull();
   expect(tag.reigns.at(-1)!.country).toBe(tag.champion);
  });

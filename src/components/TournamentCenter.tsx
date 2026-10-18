@@ -149,7 +149,7 @@ function Doubles({world,sub,onFighter,onFight}:{world:World;sub:Sub;onFighter:(i
  if(sub==='Overview')return <div className="tg-overview">
   <section className={`panel tg-champ ${champ?'':'vacant'}`}>{champ?<><div className="eyebrow">DOUBLES CROWN CHAMPIONS</div><h3><Flag code={flagOf(champ)} size={22}/>{champ}</h3><p>{reign&&!reign.endYear?`Since ${CALENDAR[Math.max(0,reign.startRound-1)]?.month??''} ${reign.startYear} · ${reign.defenses} defense${reign.defenses===1?'':'s'}`:''}</p>
    <div className="tg-team">{(team??[]).map(f=><button key={f.id} onClick={()=>onFighter(f.id)}><Avatar fighter={f} size={64}/><b>{f.name}</b><small>{f.division} · {overallOf(f,world.year)} OVR</small></button>)}</div>
-   {reign&&<p className="tg-note">Honoured in this reign: {reign.fighters.map(id=>fighter(id)?.name).filter(Boolean).join(', ')}</p>}</>:<><div className="eyebrow">DOUBLES CROWN</div><h3>Vacant</h3><p>The top two ranked countries meet for it in June.</p></>}</section>
+   {reign&&<p className="tg-note">Honoured in this reign: {reign.fighters.map(id=>fighter(id)?.name).filter(Boolean).join(', ')}</p>}</>:<><div className="eyebrow">DOUBLES CROWN</div><h3>Vacant</h3><p>The best national teams fight for it in June and at The Pinnacle. All four fighters compete in one tag match.</p></>}</section>
   <section className="panel tg-ranking"><Heading eyebrow={`${ranking.length} NATIONS`} title="Doubles ranking"/>
    <div className="tg-rank-list">{ranking.slice(0,24).map((r,i)=>{const t=teamOf(world,r.country);return <div key={r.country} className={`tg-rank ${r.country===champ?'champ':''}`}><span className="tg-pos">{r.country===champ?'C':i+(champ?0:1)}</span><Nation c={r.country}/><span className="tg-pair">{t?t.map(f=>f.name.split(' ').at(-1)).join(' · '):'no fit pair'}</span><b>{r.rating}</b></div>;})}</div>
   </section>
@@ -158,10 +158,11 @@ function Doubles({world,sub,onFighter,onFight}:{world:World;sub:Sub;onFighter:(i
   const ties=(tag?.ties??[]).filter(t=>t.year===year).slice().reverse();
   return <div className="tg-annual">
    <label className="cal-year">SEASON<select value={year} onChange={e=>setYear(Number(e.target.value))}>{(years.length?years:[world.year]).map(y=><option key={y} value={y}>{y}</option>)}</select></label>
-   {ties.length===0&&<p className="empty-msg">No ties played this season yet. Ranking ties run on the second weekly card of most months.</p>}
-   {ties.map(t=><section key={t.id} className={`panel tg-tie ${t.title?'title':''}`}><div className="tg-tie-head"><span>{CALENDAR[t.round]?.month} · {t.title?'DOUBLES CROWN TIE':'RANKING TIE'}</span><b>{t.winner?<><Flag code={flagOf(t.winner)}/>{t.winner} win</>:'Drawn'}</b></div>
+   {ties.length===0&&<p className="empty-msg">No national tag matches played this season yet. Qualifiers run on circuit cards and challenger locks lead into Crown nights.</p>}
+   {ties.map(t=><section key={t.id} className={`panel tg-tie ${t.title?'title':''}`}><div className="tg-tie-head"><span>{CALENDAR[t.round]?.month} · {t.title?'DOUBLES CROWN':t.challengerLock?'CHALLENGER LOCK':'RANKING TAG MATCH'}</span><b>{t.winner?<><Flag code={flagOf(t.winner)}/>{t.winner} win</>:'Drawn'}</b></div>
     <div className="tg-tie-teams"><Nation c={t.a}/><i>v</i><Nation c={t.b}/></div>
-    {t.legs.map((l,i)=>{const a=fighter(l.a),b=fighter(l.b);return <button key={l.fightId} className="tg-leg" onClick={()=>onFight(l.fightId)}><small>#{i+1}</small><span className={l.w===l.a?'won':l.w?'lost':''}>{a?.name}</span><i>vs</i><span className={l.w===l.b?'won':l.w?'lost':''}>{b?.name}</span></button>;})}
+    {t.matchFightId&&t.teams?<button className="tg-leg tag-match-history" onClick={()=>onFight(t.matchFightId!)}><small>2v2 TAG MATCH</small><span className={t.winner===t.a?'won':''}>{t.teams[0].map(id=>fighter(id)?.name).join(' + ')}</span><i>vs</i><span className={t.winner===t.b?'won':''}>{t.teams[1].map(id=>fighter(id)?.name).join(' + ')}</span><ChevronRight size={14}/></button>:
+     t.legs.map((l,i)=>{const a=fighter(l.a),b=fighter(l.b);return <button key={l.fightId} className="tg-leg" onClick={()=>onFight(l.fightId)}><small>LEG #{i+1} · LEGACY</small><span className={l.w===l.a?'won':l.w?'lost':''}>{a?.name}</span><i>vs</i><span className={l.w===l.b?'won':l.w?'lost':''}>{b?.name}</span></button>;})}
    </section>)}
   </div>;
  }

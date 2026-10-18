@@ -1,5 +1,5 @@
 import {BRANDS,DIVISIONS,TOP_DIVISION,isTopDivision,isSecondDivision,isWorldTier,brandOf} from './constants';
-import {bookCrownTie,bookRankingTies,emptyTag,settleTie} from './doubles';
+import {bookCrownTie,bookChallengerLock,bookRankingTies,emptyTag,resolveTagMatch} from './doubles';
 import {ageOf,clamp,overallOf} from './career';
 import {Random} from './random';
 import {simulateCombat,styleAdvantage,matchupOdds,type CombatResolution} from './combat';
@@ -92,7 +92,7 @@ export function scheduleDivision(w:World,division:Division,rng:Random,index:Riva
  const yearFights=w.fights.filter(f=>f.year===w.year);
  const appearances=new Map<string,number>(),lastAt=new Map<string,number>();
  for(const bout of yearFights){
-  for(const id of [bout.fighterA,bout.fighterB]){
+  for(const id of (bout.tag?[...bout.tag.teamA,...bout.tag.teamB]:[bout.fighterA,bout.fighterB])){
    appearances.set(id,(appearances.get(id)||0)+1);
    lastAt.set(id,CLOCK(bout.year,bout.roundIndex-1));
   }
@@ -101,7 +101,7 @@ export function scheduleDivision(w:World,division:Division,rng:Random,index:Riva
  // Thereafter one fresh outing approximately every seven event-weeks, with
  // one or two cards to catch up if an injury delayed a previous opportunity.
  const founding=w.year===2058&&week<=2;
- const target=founding?1:Math.min(8,1+Math.floor((week+3)/7));
+ const target=founding?1:Math.min(8,1+Math.floor((week+3)/7)+(isBigEvent(week)?1:0));
  const enoughRest=(f:Fighter)=>now-(lastAt.get(f.id)??-999)>= (founding?2:4);
  const available=roster.filter(f=>f.condition>=60&&f.injuryUntil<=now&&
   !reserved.has(f.id)&&enoughRest(f)&& (appearances.get(f.id)||0)<target&&
@@ -251,7 +251,7 @@ function bookedThisMonth(w:World){
 function availableIn(w:World,division:Division,booked:Set<string>,exclude:Set<string>=new Set()){
  const now=CLOCK(w.year,w.round);
  const last=new Map<string,number>();
- for(const bout of w.fights)if(bout.year===w.year){const at=CLOCK(bout.year,bout.roundIndex-1);last.set(bout.fighterA,at);last.set(bout.fighterB,at);}
+ for(const bout of w.fights)if(bout.year===w.year){const at=CLOCK(bout.year,bout.roundIndex-1);for(const id of (bout.tag?[...bout.tag.teamA,...bout.tag.teamB]:[bout.fighterA,bout.fighterB]))last.set(id,at);}
  return w.fighters.filter(f=>f.status==='active'&&f.division===division&&
   f.condition>=60&&f.injuryUntil<=now&&!booked.has(f.id)&&!exclude.has(f.id)&&
   // Marquees may call back a circuit winner, but never after a bout last week.
@@ -349,7 +349,7 @@ function bookSupremacy(w:World,reserved:Set<string>,eventName:string):PendingFig
  const now=CLOCK(w.year,w.round);
  const field:Fighter[]=[];
  for(const belt of CONTINENTAL_BELTS){
-  const list=w.fighters.filter(f=>f.status==='active'&&f.division===BELT_DIVISION[belt]&&f.condition>=55&&f.injuryUntil<=now&&!field.includes(f)).sort((a,b)=>a.rank-b.rank);
+  const list=w.fighters.filter(f=>f.status==='active'&&f.division===BELT_DIVISION[belt]&&f.condition>=55&&f.injuryUntil<=now&&!reserved.has(f.id)&&!field.includes(f)).sort((a,b)=>a.rank-b.rank);
   const champ=list.find(f=>f.id===w.belts[belt].championId);
   const pick=champ??list.find(f=>!reserved.has(f.id));
   if(pick)field.push(pick);
@@ -365,7 +365,7 @@ const toPending=(w:World,b:Booking,eventName:string):PendingFight=>{
  return {fighterA:b.a,fighterB:b.b,year:w.year,roundIndex:w.round,division,titleFight:title,eventName,kind:b.kind,...((title||b.kind==='eliminator')&&b.brand?{belt:b.brand as BeltId}:{})};
 };
 /** How many regular world-tier bouts make the main card around the event's special bouts. The rest are prelims. */
-export const MAIN_CARD=5;
+export const MAIN_CARD=4;
 /** Prepare an event. Continental and regional bouts are resolved now, in the background.
     The world-tier card (both brands' S and II divisions, plus any doubles or Pinnacle bouts) stays unplayed until the event starts. */
 export function prepareCircuitRound(w:World,rng:Random):void{
@@ -420,7 +420,14 @@ export function prepareCircuitRound(w:World,rng:Random):void{
    const eliminator=bookEliminator(w,otherBrand(titleBrand),taken);
    if(eliminator){taken.add(eliminator.a);taken.add(eliminator.b);reserved.add(eliminator.a);reserved.add(eliminator.b);specials.push(toPending(w,eliminator,slot.name));}
   }
-  if(w.round===DOUBLES_ROUND||w.round===PINNACLE_ROUND)specials.push(...bookCrownTie(w,reserved,slot.name));
+  if(w.round===DOUBLES_ROUND||w.round===PINNACLE_ROUND){
+   // June: Doubles Crown headlines. December: the unifier remains the main
+   // event and the national Crown becomes the co-main, both genuine team bouts.
+   const crown=bookCrownTie(w,reserved,slot.name);
+   if(w.round===PINNACLE_ROUND)specials.splice(Math.min(1,specials.length),0,...crown);
+   else specials.unshift(...crown);
+  }
+  if(w.round===BIG_OF(4)||w.round===BIG_OF(10))specials.push(...bookChallengerLock(w,reserved,slot.name));
   if(w.round===PINNACLE_ROUND)specials.push(...bookSupremacy(w,reserved,slot.name));
  }else if(isDoublesRankingRound(w.round)){
   extras.push(...bookRankingTies(w,reserved,slot.name,()=>rng.next(),3));
@@ -442,22 +449,43 @@ export function prepareCircuitRound(w:World,rng:Random):void{
  // Regular bouts: S divisions before II, then the best-ranked pairings first.
  const rankOf=(id:string)=>w.fighters.find(f=>f.id===id)!.rank;
  deferred.sort((x,y)=>(isTopDivision(x.division)?0:1)-(isTopDivision(y.division)?0:1)||Math.min(rankOf(x.fighterA),rankOf(x.fighterB))-Math.min(rankOf(y.fighterA),rankOf(y.fighterB)));
- const regularMain=Math.max(2,MAIN_CARD-specials.length);
+ // On a marquee night, do not show only one or two contests because the normal
+ // seven-per-year circuit quota happened to be met. Find medically cleared extra
+ // contenders for up to four headline bouts, respecting the eight-fight annual cap.
+ if(slot.kind==='major'&&specials.length+deferred.length<MAIN_CARD){
+  const taken=new Set([...reserved,...deferred.flatMap(p=>[p.fighterA,p.fighterB])]);
+  const appearances=new Map<string,number>();
+  for(const f of w.fights)if(f.year===w.year)for(const id of (f.tag?[...f.tag.teamA,...f.tag.teamB]:[f.fighterA,f.fighterB]))appearances.set(id,(appearances.get(id)||0)+1);
+  for(const division of [...BRANDS.map(b=>TOP_DIVISION[b]),...BRANDS.map(b=>`${b} II` as Division)]){
+   if(specials.length+deferred.length>=MAIN_CARD)break;
+   const pool=availableIn(w,division,taken).filter(f=>(appearances.get(f.id)??0)<8).sort((a,b)=>(appearances.get(a.id)??0)-(appearances.get(b.id)??0)||a.rank-b.rank);
+   while(pool.length>=2&&specials.length+deferred.length<MAIN_CARD){
+    const a=pool.shift()!;
+    const opponents=pool.map((f,i)=>({f,i,score:rivalsPenalty(a,f,w,rivals)+Math.abs(f.rank-a.rank)*1.8+(appearances.get(f.id)??0)*2})).sort((x,y)=>x.score-y.score);
+    const pick=opponents[0];if(!pick)break;
+    pool.splice(pool.findIndex(f=>f.id===pick.f.id),1);
+    taken.add(a.id);taken.add(pick.f.id);
+    deferred.push({fighterA:a.id,fighterB:pick.f.id,year:w.year,roundIndex:w.round,division,titleFight:false,eventName:slot.name});
+   }
+  }
+ }
+ // A marquee offers four featured matches (the rest are genuine undercard bouts).
+ // Supremacy's six round-robin matches and Doubles ranking matches do not displace the headliners.
+ specials.forEach((p,i)=>{if(i>=MAIN_CARD)p.prelim=true;});
+ const regularMain=Math.max(0,MAIN_CARD-specials.filter(p=>!p.prelim).length);
  deferred.forEach((p,i)=>{if(i>=regularMain)p.prelim=true;});
- const card=[...specials,...deferred.filter(p=>!p.prelim),...extras,...deferred.filter(p=>p.prelim)];
+ const card=[...specials.filter(p=>!p.prelim),...deferred.filter(p=>!p.prelim),...extras.map(p=>({...p,prelim:true})),...specials.filter(p=>p.prelim),...deferred.filter(p=>p.prelim)];
  w.pendingCard=card;w.pendingFight=card[0]??null;
  rankByCompetition(w);
  const ranks=new Map(w.fighters.filter(f=>f.status==='active').map(f=>[f.id,f.rank]));
  for(const f of w.fights.slice(-w.lastFightIds.length)){f.rankAfterA=ranks.get(f.fighterA)!;f.rankAfterB=ranks.get(f.fighterB)!;}
 }
-const roundsWon=(f:Fight):[number,number]=>f.rounds.reduce<[number,number]>((acc,r)=>[acc[0]+(r.scoreA>r.scoreB?1:0),acc[1]+(r.scoreB>r.scoreA?1:0)],[0,0]);
 /** Fights the whole prepared card: prelims first, the main event last. No winner exists before this call.
     `watch` holds card positions to keep the exchange-by-exchange broadcast for; recording never changes a result.
     Returns fight ids by card position (main event first; '' where a bout could not take place). */
 export function settleCard(w:World,rng:Random,watch:ReadonlySet<number>=new Set([0])):string[]{
  const card=w.pendingCard??(w.pendingFight?[w.pendingFight]:[]);
  const ids:string[]=new Array(card.length).fill('');
- const ties=new Map<string,{def:NonNullable<PendingFight['tag']>;results:Parameters<typeof settleTie>[2]}>();
  const supremacy:Fight[]=[];
  for(let i=card.length-1;i>=0;i--){
   const p=card[i];
@@ -466,10 +494,7 @@ export function settleCard(w:World,rng:Random,watch:ReadonlySet<number>=new Set(
   if(!a||!b||a.status!=='active'||b.status!=='active')continue;
   let bout:Fight;
   if(p.tag){
-   bout=resolveTournamentBout(w,rng,p.fighterA,p.fighterB,`tag-${w.year}`,`Doubles${p.tag.title?' Crown':''} · ${p.tag.a} v ${p.tag.b} · Leg ${p.tag.leg}`,false,{record:watch.has(i),eventName:p.eventName});
-   const entry=ties.get(p.tag.tie)??{def:p.tag,results:[]};
-   entry.results.push({fightId:bout.id,a:bout.fighterA,b:bout.fighterB,w:bout.winnerId,finish:stoppage(bout.method),rounds:roundsWon(bout)});
-   ties.set(p.tag.tie,entry);
+   bout=resolveTagMatch(w,rng,p,watch.has(i));
   }else if(p.supremacy){
    bout=resolveTournamentBout(w,rng,p.fighterA,p.fighterB,`supremacy-${w.year}`,'Continental Supremacy',false,{record:watch.has(i),eventName:p.eventName});
    supremacy.push(bout);
@@ -478,7 +503,6 @@ export function settleCard(w:World,rng:Random,watch:ReadonlySet<number>=new Set(
   }
   ids[i]=bout.id;
  }
- for(const {def,results} of ties.values())settleTie(w,{tie:def.tie,a:def.a,b:def.b,title:def.title},results);
  if(supremacy.length)settleSupremacy(w,supremacy);
  rankByCompetition(w);
  const ranks=new Map(w.fighters.filter(f=>f.status==='active').map(f=>[f.id,f.rank]));

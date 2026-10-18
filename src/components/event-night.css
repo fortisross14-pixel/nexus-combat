@@ -108,3 +108,16 @@
  .en-startbar{flex-direction:column;align-items:stretch;bottom:72px}
 }
 .brand-tag{display:inline-flex;align-items:center;border-radius:4px;padding:1px 5px;font:900 9px 'DM Sans',sans-serif;letter-spacing:1px;color:#081018;background:var(--brand)}
+/* Doubles is a real 2v2 tag fight, so countries and BOTH athletes head the card. */
+.tag-bout-body{align-items:stretch;gap:12px}
+.tag-team-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid rgba(147,165,200,.22);border-radius:12px;background:rgba(30,36,53,.42)}
+.tag-country{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.tag-country strong{font-size:1.2rem;letter-spacing:.04em}
+.tag-country small{font-size:.65rem;opacity:.68;letter-spacing:.08em;flex-basis:100%}
+.tag-lineup{display:grid;gap:9px}
+.tag-lineup button{display:flex;gap:9px;align-items:center;text-align:left;width:100%;background:rgba(255,255,255,.035);border:1px solid rgba(150,162,186,.14);border-radius:8px;padding:8px;color:inherit;cursor:pointer}
+.tag-lineup button span{display:grid;gap:3px;min-width:0}.tag-lineup button b{font-size:.84rem}.tag-lineup button small{font-size:.68rem;opacity:.72}
+.tag-match-note{line-height:1.55;font-size:.65rem;opacity:.7;text-align:center;white-space:nowrap}
+.tag-result .res-side{cursor:default;display:flex;flex-direction:column;align-items:flex-start;padding:14px}.tag-result .res-side.right{align-items:flex-end;text-align:right}
+.tag-result .res-side small{line-height:1.5;white-space:normal}
+@media(max-width:680px){.tag-bout-body{gap:6px}.tag-team-side{padding:7px;gap:8px}.tag-lineup button{padding:5px;gap:4px;flex-wrap:wrap}.tag-lineup button b{font-size:.73rem}.tag-lineup button small{font-size:.62rem}.tag-country strong{font-size:.91rem}.tag-match-note{font-size:.5rem}.tag-bout-body .cb-mid{min-width:30px}}
