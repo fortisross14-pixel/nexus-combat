@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {useDialog} from './useDialog';
 import {ArrowDownUp,Pause,Play,SkipForward,FastForward,X,Shield,Activity,Timer,Users,ChevronRight,Trophy} from 'lucide-react';
 import {overallOf} from '../engine/career';
 import {brandOf,RARITY_COLORS} from '../engine/constants';
@@ -20,7 +21,7 @@ export function SurgeBroadcast({world,t,onStep,onAdvance,onFinish,onFighter,onCl
  useEffect(()=>{callback.current=onStep},[onStep]);
  useEffect(()=>{if(!playing||t.status==='complete')return;const timer=window.setInterval(()=>callback.current(),speed===1?950:speed===2?480:215);return()=>window.clearInterval(timer)},[playing,speed,t.status]);
  useEffect(()=>{if(t.status==='complete')setPlaying(false)},[t.status]);
- useEffect(()=>{const handler=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[onClose]);
+ const dialogRef=useDialog<HTMLDivElement>(onClose);
  const state=t.surgeState;
  const minute=state?.minute??0;
  const entered=state?Object.keys(state.fighters).length:t.surgeMoments?.filter(m=>m.entrantId).length??0;
@@ -37,7 +38,7 @@ export function SurgeBroadcast({world,t,onStep,onAdvance,onFinish,onFighter,onCl
  const nextMinute=(entered<20?Math.max(3,(entered-1)*3):null);
  const sortBy=(key:Sort)=>{if(sort===key)setDescending(!descending);else{setSort(key);setDescending(true)}};
  const sortHead=(key:Sort,label:string)=><button className={sort===key?'selected':''} onClick={()=>sortBy(key)} aria-label={`Sort fighters by ${label}`} aria-sort={sort===key?(descending?'descending':'ascending'):undefined}>{label}<ArrowDownUp size={12}/></button>;
- return <div className="surge-shade" role="dialog" aria-modal="true" aria-label="The Surge live broadcast">
+ return <div ref={dialogRef} className="surge-shade" role="dialog" aria-modal="true" aria-label="The Surge live broadcast">
   <div className="surge-broadcast">
    <div className="surge-broadcast-head"><div><span className="surge-live-dot"/> NEXUS BROADCAST · {t.year} <strong>THE SURGE / LIVE ARENA</strong></div><button className="surge-close" onClick={onClose} aria-label="Close broadcast"><X size={22}/></button></div>
    <div className="surge-scoreboard">

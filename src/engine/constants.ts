@@ -27,7 +27,7 @@ export const divisionLabel=(d:Division|string)=>d==='S-TIER'?'S Division':d==='G
 export const REGIONS:readonly Region[]=['Americas','Europe & Middle East','Africa','APAC'];
 export const REGION_DIVISIONS:Record<Region,readonly [Division,Division]>={Americas:['AMERICAS D1','AMERICAS D2'],'Europe & Middle East':['EUROPE D1','EUROPE D2'],Africa:['AFRICA D1','AFRICA D2'],APAC:['APAC D1','APAC D2']};
 export const DIVISION_NAMES:Record<Division,string>={'NOVA S':'NOVA · S Division','NOVA II':'NOVA · Division II','ONYX S':'ONYX · S Division','ONYX II':'ONYX · Division II','S-TIER':'S Division (before the brand split)','GLOBAL D2':'Division II (before the brand split)','AMERICAS D1':'Americas · Division I','AMERICAS D2':'Americas · Division II','EUROPE D1':'Europe & Middle East · Division I','EUROPE D2':'Europe & Middle East · Division II','AFRICA D1':'Africa · Division I','AFRICA D2':'Africa · Division II','APAC D1':'APAC · Division I','APAC D2':'APAC · Division II'};
-export const RARITY_COLORS:Record<Rarity,string>={Generational:'#ee5465',Legend:'#f6c770',Epic:'#c596ef',Rare:'#62a8f3',Uncommon:'#65cbaa',Common:'#8e99ae'};
+export const RARITY_COLORS:Record<Rarity,string>={Generational:'#ff6d7b',Legend:'#f6c770',Epic:'#c596ef',Rare:'#62a8f3',Uncommon:'#65cbaa',Common:'#8e99ae'};
 // Nine centered archetypal skill offsets, ordered as SKILLS. Per-fighter noise makes each athlete distinct.
 export const STYLE_OFFSETS:Record<Style,number[]>={
   Boxing:[10,-1,-2,-8,-10,-8,9,5,5],

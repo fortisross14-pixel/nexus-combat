@@ -1,9 +1,10 @@
 import {BrandLogo} from './components/BrandLogo';
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {lazy,Suspense,useEffect,useMemo,useRef,useState} from 'react';
 import {rankText} from './components/ui';
 import {Flag} from './components/Flag';
 import {Activity,ArrowDownRight,ArrowRight,ArrowUpRight,BarChart3,BookOpen,CalendarClock,ChevronDown,Clock3,Crown,Download,FileClock,Filter,Globe2,Info,LayoutDashboard,Menu,Plus,RefreshCcw,Search,Medal,Shield,Star,Swords,Trophy,TrendingUp,Upload,Users, X, Zap} from 'lucide-react';
 import {Avatar} from './components/Avatar';
+import {useDialog} from './components/useDialog';
 import {CombatDesk,FightReport,FighterRecord} from './components/CombatDesk';
 import {buildLegacyView} from './engine/legacy';
 import {getFight,ledgerCount,ledgerFor,isWorldTitle} from './engine/archive';
@@ -11,21 +12,19 @@ import {recentResults} from './engine/forecast';
 import {makePick,settlePick,toggleFollow,userOf,pickStats} from './engine/user';
 import {beltsHeld,BELT_SHORT,CONTINENTAL_BELTS,BRAND_BELTS,isBrandBelt,isInterimChampion,topReigns} from './engine/belts';
 import {doublesHonors} from './engine/doubles';
-import {CompareDialog} from './components/TaleOfTheTape';
-import {LegacyCenter,FighterLegacyPanel,CareerChronicle} from './components/LegacyCenter';
-import {TournamentCenter} from './components/TournamentCenter';
+import './components/legacy.css';
+import './components/tournaments.css';
+import './components/surge-broadcast.css';
 import {eventNameAt,kindAt} from './engine/tournaments';
 import {LiveFight} from './components/LiveArena';
 import {EventNight} from './components/EventNight';
-import {SeasonFinale} from './components/SeasonFinale';
 import {UniverseHub} from './components/UniverseHub';
-import {WorldChronicle} from './components/WorldChronicle';
 import './components/complete-pass.css';
-import {FightCalendar} from './components/Calendar';
+import './components/calendar.css';
 import {Overview} from './components/Overview';
-import {Divisions} from './components/Divisions';
-import {Offseason} from './components/Offseason';
-import {DraftRoom} from './components/DraftRoom';
+import './components/divisions.css';
+import './components/offseason.css';
+import './components/draft-room.css';
 import './components/sim-rail.css';
 import './components/live-arena.css';
 import {CALENDAR,ROUNDS_PER_YEAR} from './engine/competition';
@@ -36,6 +35,19 @@ import {draftMove,draftAuto,draftFinish,createManagedWorld,advanceYears,advanceT
 import {readWorldDatabase,storeWorldDatabase,readUniverseSlots,queueUniverseSlot,queueDeleteUniverseSlot} from './engine/persistence';
 import type {Fight,Division,Fighter,World,Rarity,WorldEvent} from './engine/types';
 
+// Screens off the first view load on demand; their stylesheets are imported above in the original order.
+const CompareDialog=lazy(()=>import('./components/TaleOfTheTape').then(m=>({default:m.CompareDialog})));
+const LegacyCenter=lazy(()=>import('./components/LegacyCenter').then(m=>({default:m.LegacyCenter})));
+const FighterLegacyPanel=lazy(()=>import('./components/LegacyCenter').then(m=>({default:m.FighterLegacyPanel})));
+const CareerChronicle=lazy(()=>import('./components/LegacyCenter').then(m=>({default:m.CareerChronicle})));
+const TournamentCenter=lazy(()=>import('./components/TournamentCenter').then(m=>({default:m.TournamentCenter})));
+const SeasonFinale=lazy(()=>import('./components/SeasonFinale').then(m=>({default:m.SeasonFinale})));
+const WorldChronicle=lazy(()=>import('./components/WorldChronicle').then(m=>({default:m.WorldChronicle})));
+const FightCalendar=lazy(()=>import('./components/Calendar').then(m=>({default:m.FightCalendar})));
+const Divisions=lazy(()=>import('./components/Divisions').then(m=>({default:m.Divisions})));
+const Offseason=lazy(()=>import('./components/Offseason').then(m=>({default:m.Offseason})));
+const DraftRoom=lazy(()=>import('./components/DraftRoom').then(m=>({default:m.DraftRoom})));
+const PageLoading=()=><div className="page-loading" role="status">Loading…</div>;
 type Page='Dashboard'|'Statistics'|'Event Calendar'|'Tournaments'|'Fight Night'|'Fight Center'|'Divisions'|'Fighters'|'Offseason'|'World History';
 type ProfileTab='Overview'|'Development'|'Fight Record'|'Career'|'Legacy';
 const compact=(n:number)=>new Intl.NumberFormat('en-US').format(n);
@@ -45,7 +57,7 @@ function Pill({children,kind}:{children:React.ReactNode;kind?:string}){return <s
 function SectionHeading({eyebrow,title,end}:{eyebrow?:string;title:string;end?:React.ReactNode}){return <div className="section-heading"><div>{eyebrow&&<div className="eyebrow">{eyebrow}</div>}<h2>{title}</h2></div>{end}</div>}
 function Stat({label,value,icon,detail}:{label:string;value:string|number;icon:React.ReactNode;detail?:string}){return <div className="stat-tile"><div className="stat-icon">{icon}</div><div><span className="stat-label">{label}</span><div className="stat-value">{value}</div>{detail&&<small>{detail}</small>}</div></div>}
 function AppLogo(){return <div className="logo-mark"><BrandLogo brand="NEXUS" size={53}/><div className="brand-lines"><strong>NEXUS</strong><small>COMBAT CHRONICLE</small></div></div>}
-function NewWorldDialog({onCancel,onCreate}:{onCancel:()=>void;onCreate:(seed:number)=>void}){const [seed,setSeed]=useState(String(20582058));return <div className="overlay" onClick={onCancel}><div className="dialog" onClick={e=>e.stopPropagation()}><div className="dialog-top"><h2>Initialize new universe</h2><button className="icon-button" onClick={onCancel}><X size={18}/></button></div><p>Regenerate the founding 2058 roster. The current world will be overwritten on this device—export it first if you wish to keep it.</p><label htmlFor="seed">WORLD SEED</label><input id="seed" className="text-input" value={seed} onChange={e=>setSeed(e.target.value)} type="number"/><div className="dialog-actions"><button className="btn btn-quiet" onClick={onCancel}>Cancel</button><button className="btn btn-danger" onClick={()=>onCreate(Number(seed)||20582058)}>Create world <ArrowRight size={16}/></button></div></div></div>}
+function NewWorldDialog({onCancel,onCreate}:{onCancel:()=>void;onCreate:(seed:number)=>void}){const [seed,setSeed]=useState(String(20582058));const ref=useDialog<HTMLDivElement>(onCancel);return <div className="overlay" onClick={onCancel}><div className="dialog" ref={ref} role="dialog" aria-modal="true" aria-labelledby="new-world-title" onClick={e=>e.stopPropagation()}><div className="dialog-top"><h2 id="new-world-title">Initialize new universe</h2><button className="icon-button" aria-label="Cancel" onClick={onCancel}><X size={18}/></button></div><p>Regenerate the founding 2058 roster. The current world will be overwritten on this device—export it first if you wish to keep it.</p><label htmlFor="seed">WORLD SEED</label><input id="seed" className="text-input" value={seed} onChange={e=>setSeed(e.target.value)} type="number"/><div className="dialog-actions"><button className="btn btn-quiet" onClick={onCancel}>Cancel</button><button className="btn btn-danger" onClick={()=>onCreate(Number(seed)||20582058)}>Create world <ArrowRight size={16}/></button></div></div></div>}
 export function App(){
   const [world,setWorld]=useState<World>(()=>loadWorld());
   const [universeOpen,setUniverseOpen]=useState(true);const [activeSlot,setActiveSlot]=useState<number|null>(null);
@@ -146,7 +158,7 @@ export function App(){
     <main className="main-area">
       <header className="topbar"><button className="icon-button mobile-menu" onClick={()=>setMenuOpen(!menuOpen)} aria-label="Toggle menu"><Menu size={22}/></button><div className="topbar-identity"><span className="live-dot"/><span>GLOBAL CIRCUIT</span><i/> {world.draft?<button className="draft-pill" onClick={()=>navigate('Offseason')}>OFFSEASON · DRAFT ROOM OPEN</button>:<strong>{CALENDAR[world.round]?.month.toUpperCase()||'JANUARY'} · {CALENDAR[world.round]?.kind==='major'?'BIG EVENT':`WEEK ${CALENDAR[world.round]?.week}`}</strong>}</div><div className="topbar-actions"><div className="sim-float-controls sim-top"><button onClick={prepareEvent}><Zap size={15}/> Next event</button><button onClick={simulateToBig}><Crown size={15}/> Next big event</button><button onClick={()=>simulate(1)} title="Simulate the rest of this season"><CalendarClock size={15}/> Sim year</button></div><div className="year-capsule"><span>SIMULATION YEAR</span><strong>{world.year}</strong></div><button className="top-icon" onClick={()=>exportWorld(world)} title="Export world save" aria-label="Export world save"><Download size={18}/></button><button className="top-icon" onClick={()=>importRef.current?.click()} title="Import world save" aria-label="Import world save"><Upload size={18}/></button><button className="top-icon" onClick={()=>setResetOpen(true)} title="New universe" aria-label="New universe"><RefreshCcw size={18}/></button></div></header>
       <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>{void importFile(e.target.files?.[0]);e.target.value='';}}/>
-      <div className="content-area">
+      <div className="content-area"><Suspense fallback={<PageLoading/>}>
         {page==='Dashboard'&&<>
           <Overview world={world} onFighter={openProfile} onFight={setSelectedFightId} onEvent={prepareEvent} onNav={p=>{if(p==='Divisions')setDivision('NOVA S');navigate(p);}}/>
           <FollowedPanel world={world} onFighter={openProfile}/>
@@ -165,15 +177,15 @@ export function App(){
         {page==='Statistics'&&legacy&&<LegacyCenter world={world} view={legacy} onFighter={openProfile} onFight={setSelectedFightId}/>}
         {page==='Offseason'&&(world.draft?<DraftRoom world={world} onFighter={openProfile} onMove={onDraftMove} onAuto={onDraftAuto} onFinish={onDraftFinish} onManager={onManager}/>:<Offseason world={world} onFighter={openProfile}/>)}
         {page==='World History'&&<WorldChronicle world={world} onFighter={openProfile}/>} 
-      </div>
+      </Suspense></div>
       <footer className="footer"><span>NEXUS COMBAT CHRONICLE <span className="tiny-sep">//</span> 2058—∞</span><span>v1.7.0 <span className="tiny-sep">|</span> AUTOSAVED LOCALLY</span></footer>
     </main>
-    {compareId&&world.fighters.find(f=>f.id===compareId)&&<CompareDialog world={world} fighter={world.fighters.find(f=>f.id===compareId)!} initialOpponent={compareWith} onClose={()=>{setCompareId(null);setCompareWith(null);}} onFighter={openProfile} onFight={setSelectedFightId}/>}
+    {compareId&&world.fighters.find(f=>f.id===compareId)&&<Suspense fallback={null}><CompareDialog world={world} fighter={world.fighters.find(f=>f.id===compareId)!} initialOpponent={compareWith} onClose={()=>{setCompareId(null);setCompareWith(null);}} onFighter={openProfile} onFight={setSelectedFightId}/></Suspense>}
     {selected&&legacy&&<Profile followed={userOf(world).followed.includes(selected.id)} onFollow={()=>setWorld(old=>toggleFollow(old,selected.id))} onCompare={()=>setCompareId(selected.id)} fighter={selected} world={world} year={world.year} tab={profileTab} setTab={setProfileTab} onFight={setSelectedFightId} onFighter={openProfile} legacy={legacy} onClose={()=>setSelectedId(null)}/>}
     {selectedFight&&<FightReport key={selectedFight.id} fight={selectedFight} world={world} onClose={()=>setSelectedFightId(null)} onFighter={openProfile}/>}
     {staged&&staged.fightId&&<LiveFight key={staged.fightId} fight={getFight(staged.world,staged.fightId)!} world={staged.world} onComplete={finishWatching}/>}
     {playback&&playback.queue[playback.index]&&<><LiveFight key={playback.queue[playback.index].id} fight={playback.queue[playback.index]} world={playback.world} onComplete={nextInQueue}/>{playback.queue.length>1&&<div className="queue-pill">LIVE FIGHT {playback.index+1} OF {playback.queue.length}</div>}</>}
-    {finaleYear!==null&&!staged&&!playback&&<SeasonFinale key={finaleYear} world={world} year={finaleYear} onClose={()=>setFinaleYear(null)}/>}
+    {finaleYear!==null&&!staged&&!playback&&<Suspense fallback={null}><SeasonFinale key={finaleYear} world={world} year={finaleYear} onClose={()=>setFinaleYear(null)}/></Suspense>}
     <nav className="mobile-dock" aria-label="Quick navigation">{([{name:'Dashboard',label:'Home',icon:<LayoutDashboard size={19}/>},{name:'Event Calendar',label:'Events',icon:<CalendarClock size={19}/>},{name:'Fight Night',label:'Fight',icon:<Swords size={19}/>},{name:'Fighters',label:'Fighters',icon:<Users size={19}/>} ] as {name:Page;label:string;icon:React.ReactNode}[]).map(item=><button key={item.name} aria-current={page===item.name?'page':undefined} className={page===item.name?'active':''} onClick={()=>navigate(item.name)}>{item.icon}<span>{item.label}</span></button>)}</nav>
     {resetOpen&&<NewWorldDialog onCancel={()=>setResetOpen(false)} onCreate={startNew}/>}
     {!hydrated&&<div className="game-loading"><div className="logo-glyph"><span>N</span></div><strong>RESTORING YOUR NEXUS UNIVERSE</strong></div>}
@@ -211,8 +223,8 @@ function Profile({fighter:f,world,year,tab,setTab,onFight,onFighter,legacy,onClo
   const base=baseOf(f,observedYear);const overall=overallOf(f,observedYear);const skills=abilitiesOf(f,observedYear);
   const fighterReigns=topReigns(world).filter(reign=>reign.fighterId===f.id);const countedReigns=fighterReigns.filter(r=>r.via!=='split');const successfulDefenses=fighterReigns.reduce((n,reign)=>n+reign.defenses,0);const pinnacles=(world.pinnacle??[]).filter(p=>p.winnerId===f.id);const tagReigns=doublesHonors(world,f.id);const supremacies=(world.supremacy??[]).filter(x=>x.winnerId===f.id);
   const maxReached=Math.max(...f.history.map(h=>h.overall));const yearsActive=f.history.length;
-  useEffect(()=>{const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')onClose();};document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey)},[onClose]);
-  return <div className="profile-backdrop" onClick={onClose}><section className="profile-drawer" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Fighter profile: ${f.name}`}><div className="drawer-top"><span><span className="live-dot"/> NEXUS ATHLETE ID <b>{f.id.toUpperCase()}</b></span><button className="icon-button" aria-label="Close fighter profile" onClick={onClose}><X size={20}/></button></div>
+  const dialogRef=useDialog<HTMLElement>(onClose);
+  return <div className="profile-backdrop" onClick={onClose}><section ref={dialogRef} className="profile-drawer" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Fighter profile: ${f.name}`}><div className="drawer-top"><span><span className="live-dot"/> NEXUS ATHLETE ID <b>{f.id.toUpperCase()}</b></span><button className="icon-button" aria-label="Close fighter profile" onClick={onClose}><X size={20}/></button></div>
     <div className="profile-banner"><div className="profile-img"><Avatar fighter={f} size={176}/></div><div className="profile-lead"><div className="profile-badges"><Badge rarity={f.rarity}/><Pill>{active?f.division:'RETIRED'}</Pill>{beltsHeld(world,f.id).map(b=><Pill key={b} kind="positive">{isBrandBelt(b)?`${b} WORLD CHAMPION`:`${BELT_SHORT[b].toUpperCase()} CHAMPION`}</Pill>)}{isInterimChampion(world,f.id)&&<Pill kind="positive">INTERIM CHAMPION</Pill>}{world.titleShot?.fighterId===f.id&&<Pill kind="positive">GUARANTEED TITLE SHOT</Pill>}{active&&world.tag?.champion===f.country&&<Pill>DOUBLES CROWN NATION</Pill>}</div><h2>{f.name}</h2><div className="fighter-nickname">“{f.nickname}”</div><div className="profile-nation"><span><Flag code={f.flag}/> {f.country}</span><i/> {f.style} <i/> <span className="mental-chip">{f.mentality}</span></div><div className="profile-actions" style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}}><button className={`follow-toggle ${followed?'on':''}`} onClick={onFollow}><Star size={14}/>{followed?'Following':'Follow'}</button>{active&&<button className="follow-toggle" onClick={onCompare}><Swords size={14}/>Compare</button>}</div></div></div>
     <div className="profile-metrics"><div><span>BASE</span><strong>{base}</strong></div><div><span>SHAPE</span><strong className={f.shape>=0?'positive':'negative'}>{f.shape>=0?'+':''}{f.shape}</strong></div><div><span>CURRENT</span><strong className="eliterating">{overall}</strong></div><div><span>CONDITION</span><strong title={conditionLabel(f.condition)}>{f.condition}<small> /100</small></strong></div></div>
     <div className="profile-tabs">{(['Overview','Development','Fight Record','Career','Legacy'] as ProfileTab[]).map(t=><button onClick={()=>setTab(t)} className={tab===t?'active':''} key={t}>{t}</button>)}</div>
@@ -223,8 +235,8 @@ function Profile({fighter:f,world,year,tab,setTab,onFight,onFighter,legacy,onClo
       </>}
       {tab==='Development'&&<><div className="profile-section-head">CAREER TRAJECTORY <span>YEAR {observedYear}</span></div><CareerChart fighter={f} year={observedYear}/><div className="career-metrics"><div><span>CAREER SHAPE</span><strong>{f.archetype}</strong></div><div><span>HIGHEST RECORDED OVR</span><strong>{maxReached}</strong></div><div><span>YEARS DOCUMENTED</span><strong>{yearsActive}</strong></div></div><div className="profile-section-head space-top">WHAT THE RATINGS MEAN</div><div className="explain-cards"><div><TrendingUp size={17}/><strong>Annual base</strong><span>Innate career trajectory. Advances annually and can fall with age.</span></div><div><Zap size={17}/><strong>Shape</strong><span>Recent results, streaks and quality of finishes drive confidence independently of base.</span></div><div><Activity size={17}/><strong>Condition</strong><span>Damage, injury and recovery determine readiness between circuits.</span></div></div></>}
       {tab==='Fight Record'&&<FighterRecord fighter={f} world={world} onFight={onFight}/>}
-      {tab==='Career'&&<CareerChronicle world={world} fighter={f} onFight={onFight}/>}
-      {tab==='Legacy'&&<FighterLegacyPanel world={world} view={legacy} fighter={f} onFighter={onFighter} onFight={onFight}/>}
+      {tab==='Career'&&<Suspense fallback={<PageLoading/>}><CareerChronicle world={world} fighter={f} onFight={onFight}/></Suspense>}
+      {tab==='Legacy'&&<Suspense fallback={<PageLoading/>}><FighterLegacyPanel world={world} view={legacy} fighter={f} onFighter={onFighter} onFight={onFight}/></Suspense>}
     </div><div className="drawer-footer"><span><span className="live-dot"/> {active?'ACTIVE COMPETITOR':'RETIRED VETERAN'}</span><button onClick={onClose}>Close profile <X size={15}/></button></div>
   </section></div>;
 }

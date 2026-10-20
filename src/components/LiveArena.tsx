@@ -1,5 +1,6 @@
 import './nexus-refinements.css';
 import {useEffect,useState} from 'react';
+import {useDialog} from './useDialog';
 import {rankText} from './ui';
 import {Flag} from './Flag';
 import {ArrowRight,ChevronRight,Clock3,Crown,FastForward,Pause,Play,SkipForward,Trophy,Volume2,X,Zap} from 'lucide-react';
@@ -46,6 +47,7 @@ export function boutBanner(fight:Fight){
 /** Minute-by-minute replay: timeline comes exclusively from stored Fight/RoundReport.
  * Playback never re-simulates or alters the combat result. */
 export function LiveFight({fight,world,onComplete}:{fight:Fight;world:World;onComplete:()=>void}){
+ const dialogRef=useDialog<HTMLElement>(onComplete);
  const a=world.fighters.find(f=>f.id===fight.fighterA)!,b=world.fighters.find(f=>f.id===fight.fighterB)!;
  const liveIdent=identityFor(fight.eventName,!!fight.belt&&!isTopBelt(fight.belt));
  const stopped=['KO','TKO','SUB'].includes(fight.method);
@@ -97,7 +99,7 @@ export function LiveFight({fight,world,onComplete}:{fight:Fight;world:World;onCo
  const moveNextRound=()=>{const next=roundStart+lengths[round];setElapsed(Math.min(total,next));setPlaying(next<total)};
  const phase=finished?'finish':currentPosition.toLowerCase().replace('-','');
  const statRow=(label:string,x:string,y:string)=><><span className="ls-a">{x}</span><small>{label}</small><span className="ls-b">{y}</span></>;
- return <div className="live-backdrop premium-live-backdrop"><section className="live-broadcast premium-broadcast" role="dialog" aria-modal="true" aria-label={`Live fight broadcast: ${fight.tag?`${fight.tag.a} versus ${fight.tag.b}`:`${a.name} versus ${b.name}`}`} >
+ return <div className="live-backdrop premium-live-backdrop"><section ref={dialogRef} className="live-broadcast premium-broadcast" role="dialog" aria-modal="true" aria-label={`Live fight broadcast: ${fight.tag?`${fight.tag.a} versus ${fight.tag.b}`:`${a.name} versus ${b.name}`}`} >
   <header className="broadcast-header themed-header" style={identityStyle(liveIdent)}><div className="broadcast-network"><EventLogo id={liveIdent} size={30}/><span className="broadcast-onair"><span className="live-dot"/> ON AIR</span><span>NEXUS // GLOBAL FIGHT NETWORK</span><small>{fight.eventName||'CIRCUIT NIGHT'} · {fight.year}</small></div><button onClick={onComplete} aria-label="Leave broadcast and save fight result"><X size={19}/></button></header>
   {fight.tag&&<div className="tag-live-teams">{([[fight.tag.a,fight.tag.teamA],[fight.tag.b,fight.tag.teamB]] as const).map(([country,ids])=><div key={country} className="tag-live-team"><div className="tag-live-country"><Flag code={world.fighters.find(f=>f.id===ids[0])?.flag}/><b>{country}</b></div><div className="tag-live-players">{ids.map(id=>{const f=world.fighters.find(x=>x.id===id);return f?<span key={id}>{f.name}</span>:null;})}</div></div>)}</div>}
   <div className="broadcast-banner"><span>{boutBanner(fight)}</span><strong>{finished?'OFFICIAL RESULT':`ROUND ${round+1} / ${fight.scheduledRounds||3}`}</strong><span className="broadcast-big-clock">{finished?fight.method:clock}</span></div>

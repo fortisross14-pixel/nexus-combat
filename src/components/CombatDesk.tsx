@@ -2,7 +2,8 @@ import {eventNameAt} from '../engine/tournaments';
 import {isTopBelt} from '../engine/belts';
 import {rankText} from './ui';
 import {Flag} from './Flag';
-import {Fragment,useEffect,useMemo,useState} from 'react';
+import {Fragment,useMemo,useState,type RefObject} from 'react';
+import {useDialog} from './useDialog';
 import {Activity,ArrowRight,BarChart3,ChevronRight,Clock3,Flame,ShieldAlert,Swords,Trophy, X,Zap} from 'lucide-react';
 import {Avatar} from './Avatar';
 import {DIVISIONS,DIVISION_NAMES} from '../engine/constants';
@@ -34,10 +35,10 @@ function FightStats({fight,a,b}:{fight:Fight;a:Fighter;b:Fighter}){
  </div>;
 }
 /** A tag fight is reported by nation and both teammates, not by its first two starters. */
-function NationalTagReport({fight,world,onClose,onFighter}:{fight:Fight;world:World;onClose:()=>void;onFighter:(id:string)=>void}){
+function NationalTagReport({fight,world,onClose,onFighter,dialogRef}:{fight:Fight;world:World;onClose:()=>void;onFighter:(id:string)=>void;dialogRef:RefObject<HTMLElement>}){
  const t=fight.tag!;
  const sides=([ [t.a,t.teamA],[t.b,t.teamB] ] as const);
- return <div className="combat-backdrop" onClick={onClose}><section className="combat-modal" role="dialog" aria-modal="true" aria-label="National tag-team match report" onClick={e=>e.stopPropagation()}>
+ return <div className="combat-backdrop" onClick={onClose}><section ref={dialogRef} className="combat-modal" role="dialog" aria-modal="true" aria-label="National tag-team match report" onClick={e=>e.stopPropagation()}>
   <div className="combat-modal-head"><span><EventLogo id={identityFor(fight.eventName)} size={26}/> NEXUS · COUNTRY DOUBLES · {fight.year}</span><button onClick={onClose} aria-label="Close fight report"><X size={20}/></button></div>
   <div className="tag-report-head"><small>{t.title?'DOUBLES CROWN CHAMPIONSHIP':t.challengerLock?'CHALLENGER LOCK · NEXT CROWN TITLE SHOT':'NATIONAL RANKING · TAG TEAM'}</small><h2>One match. Two nations. Four fighters.</h2>
    <div className="tag-report-teams">{sides.map(([country,ids])=><div key={country} className={`tag-report-nation ${t.winner===country?'tag-victor':''}`}>
@@ -54,15 +55,15 @@ function NationalTagReport({fight,world,onClose,onFighter}:{fight:Fight;world:Wo
 }
 export function FightReport({fight,world,onClose,onFighter}:{fight:Fight;world:World;onClose:()=>void;onFighter:(id:string)=>void}){
  const [view,setView]=useState<'Commentary'|'Stats'|'Scorecard'>('Commentary');
- useEffect(()=>{const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.stopPropagation();onClose();}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);},[onClose]);
- if(fight.tag)return <NationalTagReport fight={fight} world={world} onClose={onClose} onFighter={onFighter}/>;
+ const dialogRef=useDialog<HTMLElement>(onClose);
+ if(fight.tag)return <NationalTagReport fight={fight} world={world} onClose={onClose} onFighter={onFighter} dialogRef={dialogRef}/>;
  const a=world.fighters.find(f=>f.id===fight.fighterA),b=world.fighters.find(f=>f.id===fight.fighterB);if(!a||!b)return null;
  const aWon=fight.winnerId===a.id,bWon=fight.winnerId===b.id;
  const decision=fight.method==='UD'||fight.method==='SD'||fight.method==='MD'||fight.method==='DRAW';
  const judgeTotals=[0,1,2].map(j=>fight.rounds.filter(r=>r.cards).reduce((s,r)=>[s[0]+r.cards![j][0],s[1]+r.cards![j][1]],[0,0]));
  const hasCards=fight.rounds.some(r=>r.cards);
  const ptsA=fight.rounds.reduce((s,r)=>s+r.scoreA,0),ptsB=fight.rounds.reduce((s,r)=>s+r.scoreB,0);
- return <div className="combat-backdrop" onClick={onClose}><section className="combat-modal" onClick={e=>e.stopPropagation()} aria-label="Fight report" role="dialog" aria-modal="true">
+ return <div className="combat-backdrop" onClick={onClose}><section ref={dialogRef} className="combat-modal" onClick={e=>e.stopPropagation()} aria-label="Fight report" role="dialog" aria-modal="true">
   <div className="combat-modal-head"><span><EventLogo id={identityFor(fight.eventName,!!fight.belt&&!isTopBelt(fight.belt))} size={26}/><span className="live-dot"/> NEXUS FIGHT ARCHIVE <strong>· {fight.year} / {fight.eventName||ROUND_NAMES[fight.roundIndex-1]}</strong></span><button onClick={onClose} aria-label="Close fight report"><X size={21}/></button></div>
   <div className="fight-report-banner"><div className="fight-report-topline">{fight.titleFight||fight.kind==='eliminator'?`${boutBanner(fight)} · `:''}{DIVISION_NAMES[fight.division]} <span>OFFICIAL RESULT · {Math.round(fight.oddsA*100)}% / {Math.round((1-fight.oddsA)*100)}% PRE-FIGHT CHANCE</span></div><div className="combat-vs">
     <button className={`fight-athlete ${aWon?'victor':''}`} onClick={()=>{onClose();onFighter(a.id);}}><Avatar fighter={a} size={115}/><strong>{a.name}</strong><small><Flag code={a.flag}/> {a.style} · {a.mentality}</small>{!fight.archived&&<span>{rankText(fight.rankBeforeA)} · {fight.overallBeforeA} OVR</span>}</button>

@@ -1,4 +1,4 @@
-import {useEffect} from 'react';
+import {useDialog} from './useDialog';
 import {Flag} from './Flag';
 import {ArrowRight,BarChart3,CalendarDays,Crown,Flame,Medal,Sparkles,Trophy,X} from 'lucide-react';
 import {Avatar} from './Avatar';
@@ -20,9 +20,9 @@ export function SeasonFinale({world,year,onClose}:{world:World;year:number;onClo
     {label:'THE CRUCIBLE CHAMPION',id:world.tournaments.find(t=>t.year===year&&t.kind==='CRUCIBLE')?.winnerId,icon:<Medal size={17}/>}
   ];
   const moments=world.iconicMoments.filter(m=>m.year===year).slice(0,2);
-  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[onClose]);
+  const dialogRef=useDialog<HTMLElement>(onClose);
   return <div className="finale-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
-    <section className="finale-stage" role="dialog" aria-modal="true" aria-labelledby="finale-heading">
+    <section ref={dialogRef} className="finale-stage" role="dialog" aria-modal="true" aria-labelledby="finale-heading">
       <div className="finale-particles" aria-hidden="true">{Array.from({length:22},(_,i)=><i key={i} style={{'--i':i,'--x':`${(i*53)%96}%`,'--delay':`${(i*0.17)%2.7}s`} as React.CSSProperties}/>)}</div>
       <div className="finale-bar"><span><Sparkles size={15}/> NEXUS ANNUAL HONORS</span><button aria-label="Dismiss season ceremony" onClick={onClose}><X size={18}/></button></div>
       <div className="finale-main"><div className="finale-date"><CalendarDays size={17}/> THE YEAR IN COMBAT</div><div className="finale-year" aria-hidden="true">{year}</div><h2 id="finale-heading">A season becomes <em>history.</em></h2><p>The fights are decided. The records remain. The next generation is waiting.</p>

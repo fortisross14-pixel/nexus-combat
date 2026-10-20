@@ -1,4 +1,5 @@
 import {useMemo,useState} from 'react';
+import {useDialog} from './useDialog';
 import {rankText} from './ui';
 import {Flag} from './Flag';
 import {Crown,Search,Star,X} from 'lucide-react';
@@ -74,14 +75,15 @@ export function TaleOfTheTape({world,a,b,rounds=3,onFighter,onFight,compact=fals
 }
 /** Pick any opponent and compare. */
 export function CompareDialog({world,fighter,onClose,onFighter,onFight,initialOpponent=null,rounds=3}:{world:World;fighter:Fighter;onClose:()=>void;onFighter:(id:string)=>void;onFight:(id:string)=>void;initialOpponent?:string|null;rounds?:2|3|5}){
+ const dialogRef=useDialog<HTMLElement>(onClose);
  const [query,setQuery]=useState('');
  const [otherId,setOtherId]=useState<string|null>(initialOpponent);
  const options=useMemo(()=>world.fighters.filter(f=>f.id!==fighter.id&&f.status==='active'&&`${f.name} ${f.country} ${f.style} ${f.division}`.toLowerCase().includes(query.toLowerCase()))
   .sort((x,y)=>(x.division===fighter.division?0:1)-(y.division===fighter.division?0:1)||x.rank-y.rank).slice(0,40),[world,fighter,query]);
  const other=world.fighters.find(f=>f.id===otherId);
- return <div className="tape-backdrop" onClick={onClose}><section className="tape-dialog" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Compare fighters">
+ return <div className="tape-backdrop" onClick={onClose}><section ref={dialogRef} className="tape-dialog" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Compare fighters">
   <header><span><Star size={14}/> COMPARE · {fighter.name}</span><button onClick={onClose} aria-label="Close comparison"><X size={19}/></button></header>
-  {!other?<div className="tape-picker"><label><Search size={16}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} placeholder="Find an opponent by name, nation, style or division"/></label>
+  {!other?<div className="tape-picker"><label><Search size={16}/><input data-autofocus value={query} onChange={e=>setQuery(e.target.value)} placeholder="Find an opponent by name, nation, style or division"/></label>
    <div className="tape-options">{options.map(f=><button key={f.id} onClick={()=>setOtherId(f.id)}><Avatar fighter={f} size={38}/><span><b>{f.name}</b><small><Flag code={f.flag}/> {f.division} {rankText(f.rank)} · {f.style}</small></span><em>{overallOf(f,world.year)}</em></button>)}</div></div>
   :<><button className="tape-change" onClick={()=>setOtherId(null)}>← Choose another opponent</button><TaleOfTheTape world={world} a={fighter} b={other} rounds={rounds} onFighter={id=>{onClose();onFighter(id);}} onFight={onFight}/></>}
  </section></div>;
