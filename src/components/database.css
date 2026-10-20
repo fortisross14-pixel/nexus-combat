@@ -1,0 +1,55 @@
+/* Fighter database: a wall of square portrait plates on 1px seams, like a roster board. */
+.fd{display:grid;gap:16px}
+.fd-head{display:grid;gap:8px;padding-bottom:4px}
+.fd-head h1{font:900 clamp(40px,4.4vw,64px)/.9 var(--font-display);text-transform:uppercase;color:var(--n10)}
+.fd-head p{max-width:68ch;font-size:15px;line-height:1.5;color:var(--n8)}
+
+.fd-filters{display:flex;flex-wrap:wrap;align-items:stretch;gap:1px;background:var(--n4);border:var(--seam)}
+.fd-filters>label{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 14px;background:var(--n2);color:var(--n8)}
+.fd-search{flex:1 1 280px}
+.fd-search input{flex:1;min-width:0;height:46px;border:0;background:transparent;color:var(--n10);font:500 15px var(--font-ui)}
+.fd-search input::placeholder{color:var(--n7)}
+.fd-search:focus-within,.fd-select:focus-within{box-shadow:inset 0 0 0 2px var(--amber)}
+.fd-search input:focus-visible,.fd-select select:focus-visible{outline:none!important}
+.fd-select{position:relative;flex:0 1 220px}
+.fd-select>span{font:700 11px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--n7)}
+.fd-select select{flex:1;min-width:0;height:46px;padding-right:22px;border:0;background:transparent;color:var(--n10);font:600 14px var(--font-ui);appearance:none;cursor:pointer}
+.fd-select select option{background:var(--n2);color:var(--n9)}
+.fd-select svg{position:absolute;right:12px;pointer-events:none;color:var(--n7)}
+.fd-check{flex:0 0 auto;cursor:pointer;font:600 13px var(--font-ui);color:var(--n9)}
+.fd-check input{width:18px;height:18px;margin:0;accent-color:var(--n10);cursor:pointer}
+
+.fd-count{font-size:13px;color:var(--n7)}
+.fd-count b{font:800 16px var(--font-ui);color:var(--n10);font-variant-numeric:tabular-nums}
+
+.fd-wall{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1px;background:var(--n4);border:var(--seam)}
+.fd-wall li{display:flex;background:var(--n2)}
+.fd-plate{position:relative;display:flex;flex-direction:column;width:100%;padding:0;border:0;background:var(--n2);color:inherit;text-align:left;cursor:pointer;box-shadow:inset 0 3px 0 var(--brand,var(--n5))}
+.fd-plate:hover{background:var(--n3)}
+.fd-plate:hover strong{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px;text-decoration-color:var(--n6)}
+.fd-portrait{display:block;line-height:0;background:var(--n0)}
+.fd-portrait .avatar{width:100%;height:auto;aspect-ratio:9/10;outline:0!important}
+.fd-ovr{position:absolute;top:12px;right:10px;display:grid;justify-items:end;gap:2px;padding:6px 8px;background:var(--n0) var(--dot-plate);border:var(--seam)}
+.fd-ovr small{font:700 10px var(--font-ui);letter-spacing:.14em;color:var(--n7)}
+.fd-body{display:grid;gap:4px;padding:12px 14px 14px;min-width:0}
+.fd-body strong{font:800 22px/1 var(--font-display);text-transform:uppercase;color:var(--n10);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fd-rank{display:inline-flex;align-items:center;gap:6px;font:700 11px var(--font-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--brand,var(--n7))}
+.fd-nation{display:inline-flex;align-items:center;gap:7px;font:600 13px var(--font-ui);color:var(--n9)}
+.fd-meta{font-size:12px;color:var(--n7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fd-tier{display:inline-flex;align-items:center;gap:7px;margin-top:4px;font:700 11px var(--font-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--n8)}
+.fd-tier i{width:8px;height:8px;flex:none}
+
+.fd-empty{display:grid;gap:4px;padding:28px 20px;background:var(--n2);border:var(--seam);font-size:14px;color:var(--n8)}
+.fd-empty strong{font:800 20px var(--font-display);text-transform:uppercase;color:var(--n10)}
+.fd-more{display:flex;align-items:center;justify-content:center;gap:16px;padding:8px 0;font-size:13px;color:var(--n7)}
+
+@media(max-width:640px){
+ .fd-wall{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .fd-body{padding:10px}
+ .fd-body strong{font-size:18px}
+ .fd-meta{display:none}
+ .fd-ovr{top:8px;right:6px;padding:4px 6px}
+ .fd-ovr .bn-m{font-size:20px}
+ .fd-select{flex:1 1 140px}
+ .fd-check{flex:1 1 140px}
+}

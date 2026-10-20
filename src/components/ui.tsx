@@ -14,10 +14,10 @@ export function RankTag({rank,division}:{rank:number;division?:string}){
 }
 export function RarityPill({rarity}:{rarity:Rarity}){return <span className="rarity-pill" style={{'--rare':RARITY_COLORS[rarity]} as CSSProperties}><i/>{rarity}</span>;}
 export function PageHead({tag,title,accent,description,end}:{tag:string;title:string;accent:string;description?:string;end?:ReactNode}){
- return <div className="page-title v13-head"><div><div className="eyebrow">{tag}</div><h1>{title} <span>{accent}</span></h1>{description&&<p>{description}</p>}</div>{end}</div>;
+ return <header className="pg-head"><div className="pg-head-text"><h1>{title} {accent.replace(/\.$/,'')}</h1><p className="pg-meta">{tag}</p>{description&&<p className="pg-desc">{description}</p>}</div>{end&&<div className="pg-head-end">{end}</div>}</header>;
 }
 export function Heading({eyebrow,title,end}:{eyebrow?:string;title:string;end?:ReactNode}){
- return <div className="section-heading"><div>{eyebrow&&<div className="eyebrow">{eyebrow}</div>}<h2>{title}</h2></div>{end}</div>;
+ return <div className="bd-head bd-sh"><h2>{title}</h2>{eyebrow&&<span className="bd-code">{eyebrow}</span>}{end&&<span className="bd-end">{end}</span>}</div>;
 }
 export function BeltChips({world,id}:{world:World;id:string}){
  return <>{beltsHeld(world,id).map(b=><span key={b} className="belt-chip"><Crown size={10}/>{BELT_SHORT[b]}</span>)}{isInterimChampion(world,id)&&<span className="belt-chip">INTERIM</span>}{world.titleShot?.fighterId===id&&<span className="belt-chip shot">TITLE SHOT</span>}</>;

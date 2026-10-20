@@ -1,0 +1,630 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T18:45:42.879Z",
+  "title": "Design System: NEXUS Combat Chronicle",
+  "extensions": {
+    "colorMeta": {
+      "housing-black": {
+        "role": "neutral",
+        "displayName": "Housing Black",
+        "cssVar": "--n0",
+        "canonical": "#050506",
+        "oklch": "oklch(11.6% 0.003 285.9)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "board-black": {
+        "role": "neutral",
+        "displayName": "Board Black",
+        "cssVar": "--n1",
+        "canonical": "#0a0b0d",
+        "oklch": "oklch(14.9% 0.005 264.5)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "module-black": {
+        "role": "neutral",
+        "displayName": "Module Black",
+        "cssVar": "--n2",
+        "canonical": "#101215",
+        "oklch": "oklch(18.1% 0.007 258.4)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "module-hover": {
+        "role": "neutral",
+        "displayName": "Module Hover",
+        "cssVar": "--n3",
+        "canonical": "#16191d",
+        "oklch": "oklch(21.2% 0.009 255.6)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "seam": {
+        "role": "neutral",
+        "displayName": "Seam",
+        "cssVar": "--n4",
+        "canonical": "#1f2328",
+        "oklch": "oklch(25.4% 0.011 254.0)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "seam-strong": {
+        "role": "neutral",
+        "displayName": "Strong Seam",
+        "cssVar": "--n5",
+        "canonical": "#2c3137",
+        "oklch": "oklch(31.1% 0.013 253.0)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "unlit-grey": {
+        "role": "neutral",
+        "displayName": "Unlit Grey",
+        "cssVar": "--n6",
+        "canonical": "#4a5159",
+        "oklch": "oklch(43.2% 0.016 251.7)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "label-grey": {
+        "role": "neutral",
+        "displayName": "Label Grey",
+        "cssVar": "--n7",
+        "canonical": "#8d959e",
+        "oklch": "oklch(66.6% 0.016 251.2)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "secondary-ink": {
+        "role": "neutral",
+        "displayName": "Secondary Ink",
+        "cssVar": "--n8",
+        "canonical": "#b6bdc4",
+        "oklch": "oklch(79.5% 0.013 248.0)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "primary-ink": {
+        "role": "neutral",
+        "displayName": "Primary Ink",
+        "cssVar": "--n9",
+        "canonical": "#e4e7ea",
+        "oklch": "oklch(92.7% 0.005 247.9)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "lit-white": {
+        "role": "neutral",
+        "displayName": "Lit White",
+        "cssVar": "--n10",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#050506",
+          "#101215",
+          "#1f2328",
+          "#2c3137",
+          "#4a5159",
+          "#8d959e",
+          "#b6bdc4",
+          "#e4e7ea"
+        ]
+      },
+      "next-amber": {
+        "role": "primary",
+        "displayName": "Next Amber",
+        "cssVar": "--amber",
+        "canonical": "#ffa51f",
+        "oklch": "oklch(79.3% 0.166 69.2)",
+        "tonalRamp": [
+          "#1f0100",
+          "#411500",
+          "#653000",
+          "#8c4b00",
+          "#b56900",
+          "#df8700",
+          "#ffb14b",
+          "#ffdf8b"
+        ]
+      },
+      "next-amber-hover": {
+        "role": "primary",
+        "displayName": "Next Amber Hover",
+        "cssVar": "literal #ffb84d in arena.css",
+        "canonical": "#ffb84d",
+        "oklch": "oklch(83.1% 0.145 74.2)",
+        "tonalRamp": [
+          "#1c0300",
+          "#3c1a00",
+          "#5f3500",
+          "#845100",
+          "#aa6f00",
+          "#d38f0f",
+          "#f6b75c",
+          "#ffe497"
+        ]
+      },
+      "amber-ink": {
+        "role": "primary",
+        "displayName": "Amber Ink",
+        "cssVar": "--amber-ink",
+        "canonical": "#1a0f00",
+        "oklch": "oklch(17.9% 0.037 79.0)",
+        "tonalRamp": [
+          "#0f0a04",
+          "#2a2318",
+          "#473e30",
+          "#675c4b",
+          "#887b67",
+          "#ab9c85",
+          "#d0c2ad",
+          "#f9edd9"
+        ]
+      },
+      "win-green": {
+        "role": "secondary",
+        "displayName": "Win Green",
+        "cssVar": "--win",
+        "canonical": "#3fd27a",
+        "oklch": "oklch(76.6% 0.176 152.6)",
+        "tonalRamp": [
+          "#001400",
+          "#003104",
+          "#00511b",
+          "#007333",
+          "#00974c",
+          "#1bbc66",
+          "#68e192",
+          "#a4ffc2"
+        ]
+      },
+      "loss-red": {
+        "role": "secondary",
+        "displayName": "Loss Red",
+        "cssVar": "--loss",
+        "canonical": "#ff5a4a",
+        "oklch": "oklch(68.6% 0.203 28.9)",
+        "tonalRamp": [
+          "#290000",
+          "#500000",
+          "#7a0b08",
+          "#a62920",
+          "#d44437",
+          "#ff5f4e",
+          "#ff907e",
+          "#ffc4b1"
+        ]
+      },
+      "title-champagne": {
+        "role": "secondary",
+        "displayName": "Title Champagne",
+        "cssVar": "--title",
+        "canonical": "#ecd49a",
+        "oklch": "oklch(87.6% 0.079 88.1)",
+        "tonalRamp": [
+          "#120a00",
+          "#2e2204",
+          "#4c3e1a",
+          "#6d5c31",
+          "#8f7b4a",
+          "#b39c64",
+          "#d7c28f",
+          "#ffedc0"
+        ]
+      },
+      "nova-orange": {
+        "role": "tertiary",
+        "displayName": "NOVA Orange",
+        "cssVar": "--nova",
+        "canonical": "#ff8b45",
+        "oklch": "oklch(75.2% 0.163 49.2)",
+        "tonalRamp": [
+          "#230000",
+          "#460d00",
+          "#6d2700",
+          "#964100",
+          "#c05d19",
+          "#ed7a32",
+          "#ffa66a",
+          "#ffd5a2"
+        ]
+      },
+      "onyx-violet": {
+        "role": "tertiary",
+        "displayName": "ONYX Violet",
+        "cssVar": "--onyx",
+        "canonical": "#ba83ff",
+        "oklch": "oklch(71.6% 0.180 302.6)",
+        "tonalRamp": [
+          "#140029",
+          "#2f0f4e",
+          "#4e2976",
+          "#6e44a0",
+          "#9160cc",
+          "#b57efa",
+          "#d9a9ff",
+          "#ffd8ff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Event name on its own board, in the event identity colour."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Fighter name on the profile head; page titles on redrawn pages."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Corner and champion names."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Section heads inside profiles and modules, ruled by a strong seam."
+      },
+      "module-head": {
+        "displayName": "Module Head",
+        "purpose": "Uppercase module header strip."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Table cells, notes, meta lines."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase n7 column heads and figure captions; under the figure on lit plates."
+      },
+      "board-s": {
+        "displayName": "Board S",
+        "purpose": "Lit numeral, 20px."
+      },
+      "board-m": {
+        "displayName": "Board M",
+        "purpose": "Lit numeral, 30px."
+      },
+      "board-l": {
+        "displayName": "Board L",
+        "purpose": "Lit numeral, 48px."
+      },
+      "board-xl": {
+        "displayName": "Board XL",
+        "purpose": "Lit numeral, 80px."
+      }
+    },
+    "shadows": [
+      {
+        "name": "portrait-hairline",
+        "value": "0 0 0 1px var(--n5)",
+        "purpose": "Frames portrait plates."
+      },
+      {
+        "name": "live-outline",
+        "value": "inset 0 0 0 1px var(--amber)",
+        "purpose": "The bout that is live on the card."
+      },
+      {
+        "name": "field-focus",
+        "value": "inset 0 0 0 2px var(--amber)",
+        "purpose": "Focus-within on joined filter cells."
+      },
+      {
+        "name": "brand-rail",
+        "value": "inset 0 3px 0 var(--brand)",
+        "purpose": "3px brand rail on roster plates."
+      },
+      {
+        "name": "active-tab",
+        "value": "inset 0 -2px 0 var(--n10)",
+        "purpose": "Selected profile tab; the phone dock uses inset 0 2px 0."
+      }
+    ],
+    "surfaces": [
+      {
+        "name": "seam",
+        "value": "1px solid var(--n4)",
+        "purpose": "Default module edge and row rule."
+      },
+      {
+        "name": "seam-strong",
+        "value": "1px solid var(--n5)",
+        "purpose": "Key borders and table header rules."
+      },
+      {
+        "name": "dot-plate",
+        "value": "radial-gradient(circle at center,var(--n4) 0 1px,transparent 1.4px) 0 0/5px 5px on var(--n0)",
+        "purpose": "Only behind lit numerals."
+      },
+      {
+        "name": "top-rail",
+        "value": "3px solid var(--brand | --ev-primary, fallback var(--n6))",
+        "purpose": "Headline boards carry their brand or event colour."
+      },
+      {
+        "name": "scrim",
+        "value": "#000b to #000d",
+        "purpose": "Darkens the room behind drawers and the live broadcast."
+      }
+    ],
+    "motion": [
+      {
+        "name": "key-transition",
+        "value": "background-color .15s, border-color .15s, color .15s",
+        "purpose": "Key and nav hover."
+      },
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Drawer entry (.32s profile, .25s rail)."
+      },
+      {
+        "name": "boardnum-flip",
+        "value": "42ms per frame; digit i settles at frame 4+2i",
+        "purpose": "Numerals roll and settle left to right when the world advances; instant under reduced motion."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transform transitions stripped globally; drawer keyframes become opacity fades",
+        "purpose": "Keep fades, drop travel."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sim-compact",
+        "value": "1180px"
+      },
+      {
+        "name": "drawer-dock",
+        "value": "1000px"
+      },
+      {
+        "name": "live-stack",
+        "value": "900px"
+      },
+      {
+        "name": "bout-stack",
+        "value": "760px"
+      },
+      {
+        "name": "phone",
+        "value": "640px"
+      },
+      {
+        "name": "narrow",
+        "value": "420px"
+      },
+      {
+        "name": "touch",
+        "value": "pointer:coarse (44px targets)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Board Key",
+      "kind": "button",
+      "refersTo": "button-key",
+      "description": "Neutral square key for every secondary action.",
+      "html": "<button class=\"ds-key\">Calendar</button>",
+      "css": ".ds-key{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border:1px solid var(--n5,#2c3137);background:var(--n2,#101215);color:var(--n9,#e4e7ea);font:600 13px \"Archivo\",system-ui,sans-serif;letter-spacing:.01em;border-radius:2px;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}.ds-key:hover{background:var(--n3,#16191d);border-color:var(--n6,#4a5159);color:var(--n10,#fff)}.ds-key:focus-visible{outline:2px solid var(--amber,#ffa51f);outline-offset:2px}"
+    },
+    {
+      "name": "Next Key",
+      "kind": "button",
+      "refersTo": "button-next",
+      "description": "The one amber action per screen: what happens next.",
+      "html": "<button class=\"ds-key ds-key-next\">Next event</button>",
+      "css": ".ds-key{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border:1px solid var(--n5,#2c3137);background:var(--n2,#101215);color:var(--n9,#e4e7ea);font:600 13px \"Archivo\",system-ui,sans-serif;letter-spacing:.01em;border-radius:2px;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}.ds-key:hover{background:var(--n3,#16191d);border-color:var(--n6,#4a5159);color:var(--n10,#fff)}.ds-key:focus-visible{outline:2px solid var(--amber,#ffa51f);outline-offset:2px}.ds-key-next{background:var(--amber,#ffa51f);border-color:var(--amber,#ffa51f);color:var(--amber-ink,#1a0f00)}.ds-key-next:hover{background:#ffb84d;border-color:#ffb84d;color:var(--amber-ink,#1a0f00)}"
+    },
+    {
+      "name": "Quiet Key",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Borderless key for tertiary actions.",
+      "html": "<button class=\"ds-quiet\">All divisions</button>",
+      "css": ".ds-quiet{min-height:40px;padding:0 10px;border:1px solid transparent;background:transparent;color:var(--n8,#b6bdc4);font:600 13px \"Archivo\",system-ui,sans-serif;border-radius:2px;cursor:pointer;transition:background-color .15s,color .15s}.ds-quiet:hover{background:var(--n3,#16191d);color:var(--n10,#fff)}.ds-quiet:focus-visible{outline:2px solid var(--amber,#ffa51f);outline-offset:2px}"
+    },
+    {
+      "name": "Rail Nav",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Side-rail navigation; the active item lifts to n3 with a square indicator.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-label\">THE CIRCUIT</span><button class=\"ds-nav-item\" aria-current=\"page\">Overview</button><button class=\"ds-nav-item\">Calendar</button><button class=\"ds-nav-item\">Fight Night</button></nav>",
+      "css": ".ds-nav{display:grid;gap:1px;width:220px;padding:8px;background:var(--n0,#050506)}.ds-nav-label{font:700 11px \"Archivo\",sans-serif;letter-spacing:.14em;color:var(--n7,#8d959e);padding:0 10px 6px}.ds-nav-item{position:relative;display:flex;align-items:center;min-height:40px;padding:0 10px;border:0;background:transparent;color:var(--n8,#b6bdc4);font:500 14px \"Archivo\",sans-serif;text-align:left;border-radius:2px;cursor:pointer}.ds-nav-item:hover{background:var(--n2,#101215);color:var(--n10,#fff)}.ds-nav-item:focus-visible{outline:2px solid var(--amber,#ffa51f);outline-offset:2px}.ds-nav-item[aria-current=page]{background:var(--n3,#16191d);color:var(--n10,#fff);font-weight:600}.ds-nav-item[aria-current=page]::after{content:\"\";position:absolute;right:10px;width:6px;height:6px;background:var(--n10,#fff)}"
+    },
+    {
+      "name": "Filter Strip",
+      "kind": "input",
+      "refersTo": "",
+      "description": "Joined borderless field cells on seams; focus rings the whole cell in amber.",
+      "html": "<div class=\"ds-filters\"><label class=\"ds-field\"><input placeholder=\"Search fighters\"></label><label class=\"ds-field\"><span>Brand</span><select><option>All</option></select></label></div>",
+      "css": ".ds-filters{display:flex;gap:1px;background:var(--n4,#1f2328);border:1px solid var(--n4,#1f2328)}.ds-field{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 14px;background:var(--n2,#101215);color:var(--n8,#b6bdc4)}.ds-field span{font:700 11px \"Archivo\",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--n7,#8d959e)}.ds-field input,.ds-field select{height:46px;border:0;background:transparent;color:var(--n10,#fff);font:500 15px \"Archivo\",sans-serif;outline:none}.ds-field input::placeholder{color:var(--n7,#8d959e)}.ds-field:focus-within{box-shadow:inset 0 0 0 2px var(--amber,#ffa51f)}"
+    },
+    {
+      "name": "Module",
+      "kind": "card",
+      "refersTo": "module",
+      "description": "Square module with a header strip; siblings join on 1px seams.",
+      "html": "<section class=\"ds-bd\"><header class=\"ds-bd-head\"><h2>Continental belts</h2><span>Next defense night · FEB 2058</span></header><p class=\"ds-bd-note\">Americas · Vacant</p></section>",
+      "css": ".ds-bd{background:var(--n2,#101215);border:1px solid var(--n4,#1f2328);color:var(--n9,#e4e7ea)}.ds-bd-head{display:flex;align-items:baseline;gap:12px;padding:12px 16px 11px;border-bottom:1px solid var(--n4,#1f2328)}.ds-bd-head h2{margin:0;font:700 13px/1.2 \"Archivo\",sans-serif;letter-spacing:.08em;text-transform:uppercase}.ds-bd-head span{font:600 12px \"Archivo\",sans-serif;color:var(--n7,#8d959e)}.ds-bd-note{margin:0;padding:14px 16px;font:14px/1.5 \"Archivo\",sans-serif;color:var(--n8,#b6bdc4)}"
+    },
+    {
+      "name": "Lit Figure Plate",
+      "kind": "custom",
+      "refersTo": "board-numeral",
+      "description": "Doto numerals on the dot plate, caption under the figure.",
+      "html": "<dl class=\"ds-plate\"><div><dd>412</dd><dt>Reign days</dt></div><div><dd class=\"ds-amber\">3</dd><dt>Weeks</dt></div></dl>",
+      "css": ".ds-plate{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;margin:0;background:var(--n4,#1f2328)}.ds-plate div{display:grid;gap:6px;padding:12px 18px;background:var(--n0,#050506) radial-gradient(circle at center,var(--n4,#1f2328) 0 1px,transparent 1.4px) 0 0/5px 5px}.ds-plate dd{margin:0;font:800 48px/1 \"Doto\",ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--n10,#fff)}.ds-plate dd.ds-amber{color:var(--amber,#ffa51f)}.ds-plate dt{order:2;font:700 11px \"Archivo\",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--n7,#8d959e)}"
+    },
+    {
+      "name": "Bout Staff",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Two corners mirrored across a centre staff carrying the shared facts.",
+      "html": "<div class=\"ds-bout\"><div class=\"ds-c ds-a\"><strong>Yuxuan He</strong><span>#1 · NOVA S</span></div><div class=\"ds-staff\"><span>Main event</span><b>VS</b><small>3 rounds</small></div><div class=\"ds-c\"><strong>Noah Allen</strong><span>#7 · NOVA S</span></div></div>",
+      "css": ".ds-bout{--brand:var(--nova,#ff8b45);display:grid;grid-template-columns:1fr 160px 1fr;background:var(--n0,#050506);padding:20px 0;color:var(--n10,#fff)}.ds-c{display:grid;gap:4px;align-content:center}.ds-a{text-align:right}.ds-c strong{font:800 30px/.95 \"Big Shoulders Display\",sans-serif;text-transform:uppercase}.ds-c span{font:700 12px \"Archivo\",sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--brand)}.ds-staff{display:grid;justify-items:center;gap:6px;margin:0 16px;border-left:1px solid var(--n4,#1f2328);border-right:1px solid var(--n4,#1f2328);text-align:center}.ds-staff span{font:700 12px \"Archivo\",sans-serif;letter-spacing:.12em;text-transform:uppercase}.ds-staff b{font:900 40px/1 \"Big Shoulders Display\",sans-serif;color:var(--n6,#4a5159)}.ds-staff small{font:12px \"Archivo\",sans-serif;color:var(--n7,#8d959e)}"
+    },
+    {
+      "name": "Lamp Meter",
+      "kind": "custom",
+      "refersTo": "lamp",
+      "description": "8px square lamps and a 20-segment meter; each colour carries one meaning.",
+      "html": "<div class=\"ds-lamps\"><i class=\"ds-lamp ds-l-amber\"></i><i class=\"ds-lamp ds-l-win\"></i><i class=\"ds-lamp ds-l-loss\"></i><i class=\"ds-lamp ds-l-title\"></i><span class=\"ds-meter\"><i class=\"on\"></i><i class=\"on\"></i><i class=\"on\"></i><i class=\"on\"></i><i class=\"on\"></i><i class=\"on\"></i><i class=\"on\"></i><i></i><i></i><i></i></span></div>",
+      "css": ".ds-lamps{display:flex;align-items:center;gap:10px;width:320px}.ds-lamp{display:inline-block;width:8px;height:8px;flex:none}.ds-l-amber{background:var(--amber,#ffa51f)}.ds-l-win{background:var(--win,#3fd27a)}.ds-l-loss{background:var(--loss,#ff5a4a)}.ds-l-title{background:var(--title,#ecd49a)}.ds-meter{flex:1;display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;height:10px}.ds-meter i{background:var(--n4,#1f2328)}.ds-meter i.on{background:var(--win,#3fd27a)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Centre-Hung Board",
+    "overview": "Nexus reads as the arena's scoreboard hanging over a dark house. Every screen is a board: matte black housing, square modules butted together on 1px seams, and a small set of coloured lamps that light only when they carry a meaning. The world is dense and figure-led. Names go up in condensed display capitals, UI text is set in plain Archivo, and the figures that change as the world advances (year, countdown, overall rating, reign days, pick'em scores) are lit dot-matrix numerals sitting on a dot-pitch plate.\n\nColour is rationed. The neutral ramp does almost all the work. Each lamp colour owns one job, and amber, the colour of what happens next, appears once per screen as the single primary action plus whatever is live. Brand and event colours are data: NOVA orange, ONYX violet and each event's own identity tint the names and the 3px top rail of their own boards. They are never used as decoration.\n\nEvery A-vs-B mirrors across a centre staff. Corner A is right-aligned on the left, corner B is left-aligned on the right, and the staff between them carries what the bout shares: slot, title at stake, VS, rounds and the win-chance split. The system rejects the rounded-card navy dashboard with glowing accents.",
+    "keyCharacteristics": [
+      "Square modules on an 11-step neutral ramp (n0–n10), joined by 1px seams.",
+      "One meaning per lamp colour; amber is the one thing that happens next.",
+      "Three typefaces with separate jobs: Big Shoulders Display for names, Archivo for UI, Doto for lit numerals only.",
+      "Mirrored bouts across a centre staff.",
+      "BoardNum: numerals re-light and flip to their new value when the world advances."
+    ],
+    "rules": [
+      {
+        "name": "The One Lamp, One Job Rule",
+        "body": "Each lamp colour has exactly one meaning: amber for next or live, green for win, red for loss or injury, champagne for titles, orange and violet for the two brands. A lamp colour is never used for decoration, and no meaning ever borrows another lamp's colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Amber Action Rule",
+        "body": "Each screen has a single amber-filled key, the thing that happens next. Everything else is a neutral key, a quiet key or an amber outline (live states, the draft call).",
+        "section": "colors"
+      },
+      {
+        "name": "The Ramp-Only Greys Rule",
+        "body": "Greys come from n0–n10 only. Legacy aliases (`--bg`, `--panel`, `--stroke`, `--text`, `--dim`, `--mute`) map onto the ramp. Don't add a new grey.",
+        "section": "colors"
+      },
+      {
+        "name": "The Lit Numerals Only Rule",
+        "body": "Doto sets numerals that the board lights: year, countdown, OVR, reign days, ranks, pick'em scores. Words are always set in Big Shoulders or Archivo, never in Doto.",
+        "section": "typography"
+      },
+      {
+        "name": "The Whole Dot Step Rule",
+        "body": "Doto's dot pitch scales with its size, so board numerals use only 20, 30, 48 or 80px. A fluid clamp on Doto is not allowed.",
+        "section": "typography"
+      },
+      {
+        "name": "The Data Line Rule",
+        "body": "Rank, division and status go on the data line *under* a name (\"#1 · NOVA S\", \"Champion · ONYX S\"), never as a small label stacked above the heading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mirror Rule",
+        "body": "Every A-vs-B (bout, tag team, live board, stats comparison) mirrors across a centre column carrying the shared facts. Corner A aligns right, corner B aligns left.",
+        "section": "layout"
+      },
+      {
+        "name": "The Lit Plate Rule",
+        "body": "The dot-pitch plate (5px radial dot grid in n4 on n0) sits only behind lit numerals: the year plate, title figures, pick'em scores, the live clock, the profile record board and the roster OVR badge. Words never sit on it.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do build every surface from the n0–n10 ramp and the named lamp tokens. The legacy aliases resolve onto the ramp.",
+      "Do join sibling modules with `gap:1px` on an n4 ground, framed by a 1px seam.",
+      "Do keep one amber-filled key per screen, the thing that happens next.",
+      "Do mirror every A-vs-B across a centre staff that carries the shared facts.",
+      "Do set changing figures in BoardNum at 20, 30, 48 or 80px, on the dot plate when they are headline figures.",
+      "Do put rank and division on the data line under the name, in the brand colour.",
+      "Do give keys and nav 44px targets under `pointer:coarse`.",
+      "Do keep fades and drop travel under reduced motion (drawer slides become opacity fades, and BoardNum changes instantly)."
+    ],
+    "donts": [
+      "Don't round cards or modules. Only keys may reach 2px.",
+      "Don't nest a panel inside a panel, or float modules on soft shadows.",
+      "Don't use a lamp colour for decoration, or give it a second meaning (amber text marks only the countdown and live states; no green \"success\" chrome).",
+      "Don't set words in Doto, or size Doto with a clamp.",
+      "Don't put the dot plate behind text.",
+      "Don't stack a small uppercase label above a heading. Rank, division and status go under the name.",
+      "Don't introduce greys outside the ramp, or glows and gradients on surfaces."
+    ]
+  }
+}

@@ -1,7 +1,32 @@
-import {Globe2,Plus,Play,Trash2,Users} from 'lucide-react';
+import {Play,Plus,Trash2} from 'lucide-react';
 import {BrandLogo} from './BrandLogo';
+import {BoardNum} from './board';
 import type {World} from '../engine/types';
 
+/** Start screen: three save slots shown as modules on the arena board. */
 export function UniverseHub({slots,onOpen,onCreate,onDelete}:{slots:(World|null)[];onOpen:(slot:number)=>void;onCreate:(slot:number)=>void;onDelete:(slot:number)=>void}){
- return <main className="universe-hub"><div className="universe-hub-inner"><div className="universe-hub-brand"><BrandLogo brand="NEXUS" size={60}/><span className="live-dot"/> NEXUS COMBAT CHRONICLE</div><h1>Choose a <em>universe.</em></h1><p>Up to three independent combat worlds, each with its own calendar, fighters, belts and permanent chronicle.</p><section className="universe-slots">{slots.map((world,i)=>world?<article className="universe-slot occupied" key={i}><div className="universe-slot-number">0{i+1}</div><Globe2 size={28}/><span>ACTIVE UNIVERSE</span><h2>{world.year} · {world.fighters.filter(f=>f.status==='active').length} fighters</h2><small>Seed {world.seed} · {world.hallOfFame.length} hall inductees</small><div><button className="btn btn-primary" onClick={()=>onOpen(i)}><Play size={16} fill="currentColor"/> Continue</button><button className="slot-delete" aria-label="Delete universe" onClick={()=>onDelete(i)}><Trash2 size={16}/></button></div></article>:<article className="universe-slot empty" key={i}><div className="universe-slot-number">0{i+1}</div><Users size={32}/><h2>Empty universe slot</h2><p>Begin a new founding roster and write a separate history.</p><button className="btn btn-secondary" onClick={()=>onCreate(i)}><Plus size={16}/> Create universe</button></article>)}</section></div></main>;
+ return <main className="uh">
+  <header className="uh-head">
+   <BrandLogo brand="NEXUS" size={64}/>
+   <div><h1>NEXUS</h1><p className="uh-sub">Combat Chronicle</p></div>
+  </header>
+  <section className="uh-board" aria-labelledby="uh-title">
+   <div className="uh-board-head"><h2 id="uh-title">Choose a universe</h2><p>Up to three independent combat worlds, each with its own calendar, fighters, belts and permanent chronicle.</p></div>
+   <ol className="uh-slots">{slots.map((world,i)=><li key={i} className={`uh-slot ${world?'is-live':'is-empty'}`}>
+    <span className="uh-slot-no">Slot {i+1}</span>
+    {world?<>
+     <div className="uh-year"><BoardNum value={world.year} size="l"/><span className="uh-year-label">Season</span></div>
+     <dl className="uh-facts">
+      <div><dt>Active fighters</dt><dd>{world.fighters.filter(f=>f.status==='active').length}</dd></div>
+      <div><dt>Hall of fame</dt><dd>{world.hallOfFame.length}</dd></div>
+      <div><dt>Seed</dt><dd>{world.seed}</dd></div>
+     </dl>
+     <div className="uh-actions"><button className="bd-btn uh-open" onClick={()=>onOpen(i)}><Play size={15} fill="currentColor"/>Continue</button><button className="nx-icon uh-delete" aria-label={`Delete universe in slot ${i+1}`} onClick={()=>onDelete(i)}><Trash2 size={17}/></button></div>
+    </>:<>
+     <p className="uh-empty"><strong>Empty slot</strong><span>Begin a new founding roster and write a separate history.</span></p>
+     <div className="uh-actions"><button className="bd-btn" onClick={()=>onCreate(i)}><Plus size={16}/>Create universe</button></div>
+    </>}
+   </li>)}</ol>
+  </section>
+ </main>;
 }

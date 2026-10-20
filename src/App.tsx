@@ -2,13 +2,14 @@ import {BrandLogo} from './components/BrandLogo';
 import {lazy,Suspense,useEffect,useMemo,useRef,useState} from 'react';
 import {rankText} from './components/ui';
 import {Flag} from './components/Flag';
-import {Activity,ArrowDownRight,ArrowRight,ArrowUpRight,BarChart3,BookOpen,CalendarClock,ChevronDown,Clock3,Crown,Download,FileClock,Filter,Globe2,Info,LayoutDashboard,Menu,Plus,RefreshCcw,Search,Medal,Shield,Star,Swords,TrendingUp,Upload,Users, X, Zap} from 'lucide-react';
+import {Activity,ArrowDownRight,ArrowRight,ArrowUpRight,BarChart3,BookOpen,CalendarClock,ChevronDown,Clock3,Crown,Download,FileClock,Info,LayoutDashboard,Menu,Plus,RefreshCcw,Search,Medal,Shield,Star,Swords,TrendingUp,Upload,Users, X, Zap} from 'lucide-react';
 import {Avatar} from './components/Avatar';
 import {useDialog} from './components/useDialog';
 import {BoardNum,Lamp,Meter,ModuleHead} from './components/board';
 import {brandStyle,rankLine,titlesOf} from './components/Bout';
 import {CareerPlot} from './components/CareerPlot';
 import './components/scout.css';
+import './components/database.css';
 import {CombatDesk,FightReport,FighterRecord} from './components/CombatDesk';
 import {buildLegacyView} from './engine/legacy';
 import {getFight,ledgerCount,ledgerFor,isWorldTitle} from './engine/archive';
@@ -37,7 +38,7 @@ import {MENTAL_DESCRIPTIONS,RARITY_COLORS,REGIONS,SKILLS,START_YEAR,STYLES,STYLE
 import {abilitiesOf,ageOf,baseOf,conditionLabel,overallOf} from './engine/career';
 import {draftMove,draftAuto,draftFinish,createManagedWorld,advanceYears,advanceToBigEvent,hasPendingCard,prepareNextEvent,resolveCurrentEvent,resolveTournamentAction,resolveTournamentStage,resolveWholeTournament,exportWorld,loadWorld,upgradeWorld} from './engine/world';
 import {readWorldDatabase,storeWorldDatabase,readUniverseSlots,queueUniverseSlot,queueDeleteUniverseSlot} from './engine/persistence';
-import type {Fight,Division,Fighter,World,Rarity,WorldEvent} from './engine/types';
+import type {Fight,Division,Fighter,World,WorldEvent} from './engine/types';
 
 // Screens off the first view load on demand; their stylesheets are imported above in the original order.
 const CompareDialog=lazy(()=>import('./components/TaleOfTheTape').then(m=>({default:m.CompareDialog})));
@@ -55,9 +56,7 @@ const PageLoading=()=><div className="page-loading" role="status">Loading…</di
 type Page='Dashboard'|'Statistics'|'Event Calendar'|'Tournaments'|'Fight Night'|'Fight Center'|'Divisions'|'Fighters'|'Offseason'|'World History';
 type ProfileTab='Overview'|'Development'|'Fight Record'|'Career'|'Legacy';
 const compact=(n:number)=>new Intl.NumberFormat('en-US').format(n);
-function Rating({n,color=true}:{n:number;color?:boolean}){return <span className={`rating-num ${color?(n>=90?'eliterating':n>=80?'strongrating':n>=70?'normalrating':'lowrating'):''}`}>{n}</span>;}
-function Badge({rarity}:{rarity:Rarity}){return <span className="rarity-pill" style={{'--rare':RARITY_COLORS[rarity]} as React.CSSProperties}><i/>{rarity}</span>}
-function SectionHeading({eyebrow,title,end}:{eyebrow?:string;title:string;end?:React.ReactNode}){return <div className="section-heading"><div>{eyebrow&&<div className="eyebrow">{eyebrow}</div>}<h2>{title}</h2></div>{end}</div>}
+function SectionHeading({eyebrow,title,end}:{eyebrow?:string;title:string;end?:React.ReactNode}){return <div className="bd-head bd-sh"><h2>{title}</h2>{eyebrow&&<span className="bd-code">{eyebrow}</span>}{end&&<span className="bd-end">{end}</span>}</div>}
 function Stat({label,value,icon,detail}:{label:string;value:string|number;icon:React.ReactNode;detail?:string}){return <div className="stat-tile"><div className="stat-icon">{icon}</div><div><span className="stat-label">{label}</span><div className="stat-value">{value}</div>{detail&&<small>{detail}</small>}</div></div>}
 function NewWorldDialog({onCancel,onCreate}:{onCancel:()=>void;onCreate:(seed:number)=>void}){const [seed,setSeed]=useState(String(20582058));const ref=useDialog<HTMLDivElement>(onCancel);return <div className="overlay" onClick={onCancel}><div className="dialog" ref={ref} role="dialog" aria-modal="true" aria-labelledby="new-world-title" onClick={e=>e.stopPropagation()}><div className="dialog-top"><h2 id="new-world-title">Initialize new universe</h2><button className="icon-button" aria-label="Cancel" onClick={onCancel}><X size={18}/></button></div><p>Regenerate the founding 2058 roster. The current world will be overwritten on this device—export it first if you wish to keep it.</p><label htmlFor="seed">WORLD SEED</label><input id="seed" className="text-input" value={seed} onChange={e=>setSeed(e.target.value)} type="number"/><div className="dialog-actions"><button className="btn btn-quiet" onClick={onCancel}>Cancel</button><button className="btn btn-danger" onClick={()=>onCreate(Number(seed)||20582058)}>Create world <ArrowRight size={16}/></button></div></div></div>}
 export function App(){
@@ -176,11 +175,32 @@ export function App(){
         {page==='Fight Night'&&<EventNight world={world} onPick={id=>setWorld(old=>makePick(old,id))} onPrepare={prepareEvent} onTournament={prepareEvent} onStart={startEvent} onFighter={openProfile} onFight={setSelectedFightId} onTape={(a,b)=>{setCompareId(a);setCompareWith(b);}}/>}
         {page==='Fight Center'&&<CombatDesk world={world} onSimRound={prepareEvent} onSimYear={()=>simulate(1)} onSelect={openProfile} onFight={setSelectedFightId}/> }
         {page==='Divisions'&&<Divisions world={world} division={division} setDivision={setDivision} onFighter={openProfile}/>}
-        {page==='Fighters'&&<>
-          <PageTop tag="ATHLETE ARCHIVE" title="Fighter" accent="Database." description="Discover every active competitor and retired veteran. Open a profile to examine development, martial art specialization and their full fight record and year-by-year career history."/>
-          <div className="fighter-toolbar"><label className="search-field"><Search size={18}/><input type="search" placeholder="Search by name, nation, style..." value={search} onChange={e=>setSearch(e.target.value)}/></label><label className="select-holder"><Filter size={16}/><select value={filterStyle} onChange={e=>setFilterStyle(e.target.value)}><option>All styles</option>{STYLES.map(s=><option key={s}>{s}</option>)}</select><ChevronDown size={15}/></label><label className="select-holder"><Globe2 size={16}/><select value={filterRegion} onChange={e=>setFilterRegion(e.target.value)}><option>All regions</option>{REGIONS.map(r=><option key={r}>{r}</option>)}</select><ChevronDown size={15}/></label><label className="toggle-retired"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/><span>Include retired</span></label><label className="toggle-retired"><input type="checkbox" checked={followedOnly} onChange={e=>setFollowedOnly(e.target.checked)}/><span>Followed only</span></label></div>
-          {(()=>{const followedSet=new Set(userOf(world).followed);const list=world.fighters.filter(f=>(!followedOnly||followedSet.has(f.id))&&(showAll||followedOnly||f.status==='active')&&(filterStyle==='All styles'||f.style===filterStyle)&&(filterRegion==='All regions'||f.region===filterRegion)&&`${f.name} ${f.nickname} ${f.country} ${f.style} ${f.mentality}`.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.status.localeCompare(b.status)||overallOf(b,world.year)-overallOf(a,world.year));return <><div className="results-line"><span><strong>{list.length}</strong> MATCHING FIGHTERS · {Math.min(list.length,visibleFighters)} SHOWN</span><span>SELECT A FIGHTER TO EXPLORE THEIR CAREER <ArrowRight size={13}/></span></div><div className="fighter-grid">{list.slice(0,visibleFighters).map(f=><button key={f.id} className={`fighter-card rarity-${f.rarity.toLowerCase()}`} onClick={()=>openProfile(f.id)}><div className="fighter-card-top"><Badge rarity={f.rarity}/><span className="fighter-card-rating"><Rating n={overallOf(f,world.year)}/></span></div><div className="fighter-card-portrait"><Avatar fighter={f} size={147}/></div><div className="fighter-card-bottom"><strong>{f.name}</strong><span><Flag code={f.flag}/> {f.country} <span className="tiny-sep">/</span> {f.status==='active'?f.division:'RETIRED'}</span><div><small>{f.style} · {f.mentality}</small><span>{ageOf(f, f.retiredYear||world.year)}Y <ArrowRight size={14}/></span></div></div></button>)}</div>{list.length>visibleFighters&&<div className="fighter-load-more"><span>Showing {visibleFighters} of {list.length} athletes</span><button className="btn btn-secondary" onClick={()=>setVisibleFighters(n=>n+80)}>Show 80 more <ChevronDown size={16}/></button></div>}{list.length===0&&<div className="panel empty-msg">No matching fighters. Adjust your search or filters.</div>}</>})()}
-        </>}
+        {page==='Fighters'&&<div className="fd">
+          <header className="fd-head"><h1>Fighter database</h1><p>Every active competitor and retired veteran. Open a fighter for the full scouting report: ratings, record, career and honours.</p></header>
+          <div className="fd-filters" role="search" aria-label="Filter fighters">
+            <label className="fd-search"><Search size={17}/><span className="sr-only">Search fighters</span><input type="search" placeholder="Search by name, nation, style…" value={search} onChange={e=>setSearch(e.target.value)}/></label>
+            <label className="fd-select"><span>Style</span><select value={filterStyle} onChange={e=>setFilterStyle(e.target.value)}><option>All styles</option>{STYLES.map(st=><option key={st}>{st}</option>)}</select><ChevronDown size={15} aria-hidden="true"/></label>
+            <label className="fd-select"><span>Region</span><select value={filterRegion} onChange={e=>setFilterRegion(e.target.value)}><option>All regions</option>{REGIONS.map(r=><option key={r}>{r}</option>)}</select><ChevronDown size={15} aria-hidden="true"/></label>
+            <label className="fd-check"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/><span>Include retired</span></label>
+            <label className="fd-check"><input type="checkbox" checked={followedOnly} onChange={e=>setFollowedOnly(e.target.checked)}/><span>Followed only</span></label>
+          </div>
+          {(()=>{const followedSet=new Set(userOf(world).followed);const list=world.fighters.filter(f=>(!followedOnly||followedSet.has(f.id))&&(showAll||followedOnly||f.status==='active')&&(filterStyle==='All styles'||f.style===filterStyle)&&(filterRegion==='All regions'||f.region===filterRegion)&&`${f.name} ${f.nickname} ${f.country} ${f.style} ${f.mentality}`.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.status.localeCompare(b.status)||overallOf(b,world.year)-overallOf(a,world.year));
+            return <>
+            <p className="fd-count" aria-live="polite"><b>{list.length}</b> fighter{list.length===1?'':'s'} match · {Math.min(list.length,visibleFighters)} shown · sorted by overall rating</p>
+            {list.length===0?<div className="fd-empty"><strong>No fighters match.</strong><span>Clear the search or widen the style and region filters.</span></div>:
+            <ul className="fd-wall">{list.slice(0,visibleFighters).map(f=><li key={f.id}><button className="fd-plate" style={brandStyle(f)} onClick={()=>openProfile(f.id)}>
+              <span className="fd-portrait"><Avatar fighter={f} size={200}/></span>
+              <span className="fd-ovr"><BoardNum value={overallOf(f,world.year)} size="m"/><small>OVR</small></span>
+              <span className="fd-body">
+                <strong>{f.name}</strong>
+                <span className="fd-rank">{f.rank===0&&f.status==='active'&&<Lamp tone="title"/>}{rankLine(f)}</span>
+                <span className="fd-nation"><Flag code={f.flag}/>{f.country}</span>
+                <span className="fd-meta">{f.style} · {f.mentality} · {ageOf(f,f.retiredYear||world.year)} yrs</span>
+                <span className="fd-tier"><i style={{background:RARITY_COLORS[f.rarity]}}/>{f.rarity}</span>
+              </span></button></li>)}</ul>}
+            {list.length>visibleFighters&&<div className="fd-more"><span>Showing {visibleFighters} of {list.length}</span><button className="bd-btn" onClick={()=>setVisibleFighters(n=>n+80)}>Show 80 more<ChevronDown size={16}/></button></div>}
+            </>;})()}
+        </div>}
         {page==='Statistics'&&legacy&&<LegacyCenter world={world} view={legacy} onFighter={openProfile} onFight={setSelectedFightId}/>}
         {page==='Offseason'&&(world.draft?<DraftRoom world={world} onFighter={openProfile} onMove={onDraftMove} onAuto={onDraftAuto} onFinish={onDraftFinish} onManager={onManager}/>:<Offseason world={world} onFighter={openProfile}/>)}
         {page==='World History'&&<WorldChronicle world={world} onFighter={openProfile}/>} 
@@ -218,7 +238,7 @@ function FollowedPanel({world,onFighter}:{world:World;onFighter:(id:string)=>voi
       {user.picks.length>0&&<ol className="bd-feed">{user.picks.slice(-5).reverse().map(p=>{const fight=getFight(world,p.fightId);return fight&&<li key={p.fightId}><Lamp tone={p.correct?'win':p.correct===false?'loss':'off'} label={p.correct?'Correct':p.correct===false?'Wrong':'Draw'}/><span><b>{world.fighters.find(f=>f.id===p.pick)?.name}</b> · {fight.headline}</span><time>{Math.round(p.odds*100)}%</time></li>;})}</ol>}
     </section></div>;
 }
-function PageTop({tag,title,accent,description}:{tag:string;title:string;accent:string;description:string}){return <div className="page-title"><div><div className="eyebrow">{tag}</div><h1>{title} <span>{accent}</span></h1><p>{description}</p></div></div>}
+function PageTop({tag,title,accent,description}:{tag:string;title:string;accent:string;description:string}){return <header className="pg-head"><div className="pg-head-text"><h1>{title} {accent.replace(/\.$/,'')}</h1><p className="pg-meta">{tag}</p><p className="pg-desc">{description}</p></div></header>}
 function HistoryIcon({type}:{type:WorldEvent['type']}){return type==='promotion'?<ArrowUpRight size={17}/>:type==='relegation'?<ArrowDownRight size={17}/>:type==='retirement'?<Clock3 size={17}/>:<Plus size={17}/>}
 export function HistoryPage({world,onSelect}:{world:World;onSelect:(id:string)=>void}){
   const [eventFilter,setEventFilter]=useState('All');const [limit,setLimit]=useState(40);

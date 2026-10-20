@@ -13,6 +13,9 @@ import {MONTHS} from '../engine/competition';
 import {reignDuration} from '../engine/legacy';
 import {EventLogo,identityFor,identityStyle} from './EventIdentity';
 import './pass2.css';
+import './live-board.css';
+import {BoardNum,Lamp,Meter} from './board';
+import {brandStyle} from './Bout';
 
 /** Lineage of every belt: the World Crown (with interim titles) and the four continental belts. */
 export function CrownLineage({world,onFighter}:{world:World;onFighter:(id:string)=>void}){
@@ -98,30 +101,54 @@ export function LiveFight({fight,world,onComplete}:{fight:Fight;world:World;onCo
  const winner=world.fighters.find(f=>f.id===fight.winnerId);
  const moveNextRound=()=>{const next=roundStart+lengths[round];setElapsed(Math.min(total,next));setPlaying(next<total)};
  const phase=finished?'finish':currentPosition.toLowerCase().replace('-','');
- const statRow=(label:string,x:string,y:string)=><><span className="ls-a">{x}</span><small>{label}</small><span className="ls-b">{y}</span></>;
- return <div className="live-backdrop premium-live-backdrop"><section ref={dialogRef} className="live-broadcast premium-broadcast" role="dialog" aria-modal="true" aria-label={`Live fight broadcast: ${fight.tag?`${fight.tag.a} versus ${fight.tag.b}`:`${a.name} versus ${b.name}`}`} >
-  <header className="broadcast-header themed-header" style={identityStyle(liveIdent)}><div className="broadcast-network"><EventLogo id={liveIdent} size={30}/><span className="broadcast-onair"><span className="live-dot"/> ON AIR</span><span>NEXUS // GLOBAL FIGHT NETWORK</span><small>{fight.eventName||'CIRCUIT NIGHT'} · {fight.year}</small></div><button onClick={onComplete} aria-label="Leave broadcast and save fight result"><X size={19}/></button></header>
-  {fight.tag&&<div className="tag-live-teams">{([[fight.tag.a,fight.tag.teamA],[fight.tag.b,fight.tag.teamB]] as const).map(([country,ids])=><div key={country} className="tag-live-team"><div className="tag-live-country"><Flag code={world.fighters.find(f=>f.id===ids[0])?.flag}/><b>{country}</b></div><div className="tag-live-players">{ids.map(id=>{const f=world.fighters.find(x=>x.id===id);return f?<span key={id}>{f.name}</span>:null;})}</div></div>)}</div>}
-  <div className="broadcast-banner"><span>{boutBanner(fight)}</span><strong>{finished?'OFFICIAL RESULT':`ROUND ${round+1} / ${fight.scheduledRounds||3}`}</strong><span className="broadcast-big-clock">{finished?fight.method:clock}</span></div>
-  <div className="broadcast-matchup"><div className="broadcast-contender contender-a"><div className="broadcast-avatar"><Avatar fighter={playA} size={160}/></div><span className="broadcast-flag"><Flag code={a.flag}/> {a.country}</span><h2>{playA.name}</h2><span className="broadcast-specialty">{playA.style} · {rankText(fight.rankBeforeA)}</span><div className="energy-caption">ENERGY <strong>{finished?roundData.staminaA:energyA}%</strong></div><div className="broadcast-bar"><i style={{width:`${finished?roundData.staminaA:energyA}%`}}/></div></div>
-  <div className="broadcast-arena"><div className="arena-backlights"/><div className="arena-badge">{finished?'FIGHT COMPLETE':`${currentPosition} EXCHANGE`}</div><div className={`arena-surface phase-${phase} ${playing?'in-motion':'paused'} ${finished&&stopped?'finish-flash':''}`}><div className="arena-floor"/><div className="arena-grid"/><div className="arena-athlete arena-attacker"><Avatar fighter={playA} size={105}/></div><div className="arena-hit"><Zap size={23}/></div><div className="arena-athlete arena-defender"><Avatar fighter={playB} size={105}/></div></div>
+ const nameA=fight.tag?fight.tag.a:playA.name,nameB=fight.tag?fight.tag.b:playB.name;
+ const enA=Math.round(finished?roundData.staminaA:energyA),enB=Math.round(finished?roundData.staminaB:energyB);
+ const stats:{label:string;a:number;b:number;ta?:string;tb?:string}[]=[
+  {label:'Sig. strikes',a:v(totA,STAT.SIGL),b:v(totB,STAT.SIGL),ta:`${v(totA,STAT.SIGL)}/${v(totA,STAT.SIG)}`,tb:`${v(totB,STAT.SIGL)}/${v(totB,STAT.SIG)}`},
+  {label:'Total strikes',a:v(totA,STAT.STRL),b:v(totB,STAT.STRL),ta:`${v(totA,STAT.STRL)}/${v(totA,STAT.STR)}`,tb:`${v(totB,STAT.STRL)}/${v(totB,STAT.STR)}`},
+  {label:'Power shots',a:v(totA,STAT.POWL),b:v(totB,STAT.POWL),ta:`${v(totA,STAT.POWL)}/${v(totA,STAT.POW)}`,tb:`${v(totB,STAT.POWL)}/${v(totB,STAT.POW)}`},
+  {label:'Takedowns',a:v(totA,STAT.TDL),b:v(totB,STAT.TDL),ta:`${v(totA,STAT.TDL)}/${v(totA,STAT.TD)}`,tb:`${v(totB,STAT.TDL)}/${v(totB,STAT.TD)}`},
+  {label:'Sub. attempts',a:v(totA,STAT.SUBA),b:v(totB,STAT.SUBA)},
+  {label:'Knockdowns',a:v(totA,STAT.KD),b:v(totB,STAT.KD)},
+  {label:'Control',a:v(totA,STAT.CTRL),b:v(totB,STAT.CTRL),ta:mmss(v(totA,STAT.CTRL)),tb:mmss(v(totB,STAT.CTRL))}];
+ const showStats=totA.length>0||totB.length>0||timeline.length>0;
+ const corner=(p:typeof a,side:'a'|'b',flagOf:typeof a,rank:number,energy:number)=><div className={`lv-corner lv-${side}`} style={brandStyle(p)}>
+  <span className="lv-portrait"><Avatar fighter={p} size={150}/></span>
+  <div className="lv-id"><h2>{p.name}</h2><span className="lv-rank">{rankText(rank)} · {p.style}</span><span className="lv-nation"><Flag code={flagOf.flag}/>{flagOf.country}</span></div>
+  <div className="lv-energy"><span>Energy <b>{energy}%</b></span><Meter value={energy} segments={20} tone={energy<30?'loss':undefined} label={`${p.name} energy`}/></div>
+ </div>;
+ return <div className="lv-shade"><section ref={dialogRef} className="lv" style={identityStyle(liveIdent)} role="dialog" aria-modal="true" aria-label={`Live fight broadcast: ${fight.tag?`${fight.tag.a} versus ${fight.tag.b}`:`${a.name} versus ${b.name}`}`}>
+  <header className="lv-top"><EventLogo id={liveIdent} size={34}/><span className="lv-event"><b>{fight.eventName||'Circuit night'}</b> · {fight.year}</span><span className={`lv-onair ${finished?'is-off':''}`}><Lamp tone={finished?'off':'amber'}/>{finished?'Final':'Live'}</span><span className={`lv-banner ${fight.titleFight||fight.kind?'is-title':''}`}>{boutBanner(fight)}</span><button className="nx-icon" onClick={onComplete} aria-label="Leave broadcast and save fight result"><X size={20}/></button></header>
+  {fight.tag&&<div className="lv-tag">{([[fight.tag.a,fight.tag.teamA],[fight.tag.b,fight.tag.teamB]] as const).map(([country,ids])=><div key={country}><b><Flag code={world.fighters.find(f=>f.id===ids[0])?.flag}/>{country}</b><span>{ids.map(id=>world.fighters.find(x=>x.id===id)?.name).filter(Boolean).join(' / ')}</span></div>)}</div>}
+  <div className="lv-board">
+   {corner(playA,'a',a,fight.rankBeforeA,enA)}
+   <div className="lv-clock">
+    <span className="lv-round">{finished?'Official result':`Round ${round+1} of ${fight.scheduledRounds||3}`}</span>
+    <BoardNum value={finished?fight.method:clock} size="xl" tone={finished?'title':'amber'}/>
+    {!finished&&<div className="lv-score" aria-label={`Points after completed rounds: ${scoreA} to ${scoreB}`}><BoardNum value={scoreA} size="l"/><span aria-hidden="true">–</span><BoardNum value={scoreB} size="l"/></div>}
+    {!finished&&<span className="lv-score-label">Points · completed rounds</span>}
+    {finished&&<span className="lv-score-label">Round {fight.finishRound} · {fight.finishTime}</span>}
+   </div>
+   {corner(playB,'b',b,fight.rankBeforeB,enB)}
+  </div>
+  <div className="lv-stage">
+   <span className="lv-position">{finished?'Fight complete':`${currentPosition.toLowerCase()} exchange`}</span>
+   <div className={`arena-surface phase-${phase} ${playing?'in-motion':'paused'} ${finished&&stopped?'finish-flash':''}`}><div className="arena-athlete arena-attacker"><Avatar fighter={playA} size={96}/></div><div className="arena-hit"><Zap size={22}/></div><div className="arena-athlete arena-defender"><Avatar fighter={playB} size={96}/></div></div>
    <div className="arena-bubbles" aria-live="polite">{bubbles.map((act,i)=>{const h=hash(`${round}-${act.t}-${act.k}-${i}`);const left=act.c==='finish'?50:act.by===0?18+h%24:58+h%24;return <span key={`${round}-${act.t}-${act.k}-${act.by}`} className={`action-bubble cat-${act.c} side-${act.by===0?'a':'b'}`} style={{left:`${left}%`,marginBottom:act.c==='finish'?0:(h%3)*16}}>{actionLabel(act.k)}</span>;})}</div>
-   {finished?<div className="arena-finished-label">OFFICIAL RESULT</div>:<div className="arena-score"><span>{strikesA}<small>SIG. STRIKES</small></span><strong>{scoreA} <i>—</i> {scoreB}</strong><span>{strikesB}<small>SIG. STRIKES</small></span></div>}</div>
-  <div className="broadcast-contender contender-b"><div className="broadcast-avatar"><Avatar fighter={playB} size={160}/></div><span className="broadcast-flag"><Flag code={b.flag}/> {b.country}</span><h2>{playB.name}</h2><span className="broadcast-specialty">{playB.style} · {rankText(fight.rankBeforeB)}</span><div className="energy-caption">ENERGY <strong>{finished?roundData.staminaB:energyB}%</strong></div><div className="broadcast-bar alt"><i style={{width:`${finished?roundData.staminaB:energyB}%`}}/></div></div></div>
-  {finished&&<div className="nexus-result-summary" role="status"><Crown size={23}/><div><span>WINNER · {fight.method} · ROUND {fight.finishRound} · {fight.finishTime}</span><strong>{fight.tag?(fight.tag.winner??'DRAW'):winner?.name??'DRAW'}</strong>{fight.titleChange&&<small>NEW {fight.belt?BELT_SHORT[fight.belt].toUpperCase():'WORLD'} CHAMPION</small>}</div></div>}
-  <div className="nexus-energy-hud" aria-label="Live fighter energy"><div><b>{fight.tag?fight.tag.a:playA.name}</b><span>ENERGY {Math.round(finished?roundData.staminaA:energyA)}%</span><meter min="0" max="100" value={Math.max(0,Math.min(100,finished?roundData.staminaA:energyA))}/></div><div><b>{fight.tag?fight.tag.b:playB.name}</b><span>ENERGY {Math.round(finished?roundData.staminaB:energyB)}%</span><meter min="0" max="100" value={Math.max(0,Math.min(100,finished?roundData.staminaB:energyB))}/></div></div>
-  {(totA.length>0||totB.length>0||timeline.length>0)&&<div className="live-stats"><div className="ls-head"><span>{a.name.split(' ').at(-1)?.toUpperCase()}</span><span>LIVE FIGHT STATS</span><span>{b.name.split(' ').at(-1)?.toUpperCase()}</span></div>
-   {statRow('Sig. strikes',`${v(totA,STAT.SIGL)}/${v(totA,STAT.SIG)}`,`${v(totB,STAT.SIGL)}/${v(totB,STAT.SIG)}`)}
-   {statRow('Total strikes',`${v(totA,STAT.STRL)}/${v(totA,STAT.STR)}`,`${v(totB,STAT.STRL)}/${v(totB,STAT.STR)}`)}
-   {statRow('Power shots',`${v(totA,STAT.POWL)}/${v(totA,STAT.POW)}`,`${v(totB,STAT.POWL)}/${v(totB,STAT.POW)}`)}
-   {statRow('Takedowns',`${v(totA,STAT.TDL)}/${v(totA,STAT.TD)}`,`${v(totB,STAT.TDL)}/${v(totB,STAT.TD)}`)}
-   {statRow('Sub. attempts',String(v(totA,STAT.SUBA)),String(v(totB,STAT.SUBA)))}
-   {statRow('Knockdowns',String(v(totA,STAT.KD)),String(v(totB,STAT.KD)))}
-   {statRow('Control',mmss(v(totA,STAT.CTRL)),mmss(v(totB,STAT.CTRL)))}
-   <span className="ls-a"><span className="damage-meter right"><div><i style={{width:`${Math.min(100,damageA)}%`}}/></div>{damageA}</span></span><small>Damage taken</small><span className="ls-b"><span className="damage-meter"><div><i style={{width:`${Math.min(100,damageB)}%`}}/></div>{damageB}</span></span>
-  </div>}
-  <div className="broadcast-timeline"><div className="timeline-heading"><span><Clock3 size={15}/> MINUTE-BY-MINUTE</span><strong>{finished?'FINAL':`R${round+1} · MINUTE ${minute}`}</strong></div><div className="minute-segments" aria-label="Current round progression">{[0,1,2,3,4].map(i=><div key={i} className={`minute-segment ${local>=i*60?'minute-reached':''} ${Math.floor(local/60)===i&&!finished?'minute-now':''}`}><span>0{i+1}</span><div><i style={{width:`${Math.max(0,Math.min(100,(local-i*60)/60*100))}%`}}/></div></div>)}</div><div className="timeline-rounds">{fight.rounds.map((r,i)=><span key={r.number} className={i===round?'active':i<round?'past':''}>ROUND {r.number}{i<round&&r.cards?` · ${r.scoreA}-${r.scoreB}`:''}</span>)}</div></div>
-  <div className="broadcast-commentary premium-commentary"><div className="eyebrow"><Volume2 size={15}/> {finished?'OFFICIAL RESULT':'LIVE COMBAT INTELLIGENCE'}</div><p key={`${round}-${latestAction?.t??Math.floor(local/60)}-${finished}`} className="commentary-active">{shownNote}{finished&&fight.titleChange?` The ${fight.belt?BELT_SHORT[fight.belt]:'World Crown'} has changed hands.`:''}</p><div className="commentary-stats"><span>ROUND {round+1}</span><span>{v(totA,STAT.TDL)} / {v(totB,STAT.TDL)} TAKEDOWNS</span><span>{Math.floor(elapsed/60)} MINUTES ELAPSED</span></div></div>
-  <footer className="broadcast-controls premium-controls"><div className="transport-controls"><button onClick={()=>setPlaying(v=>!v)} disabled={finished} aria-label={playing?'Pause fight':'Resume fight'}>{playing?<Pause size={17}/>:<Play size={17}/>} {playing?'Pause':'Play'}</button><button onClick={()=>setSpeed(v=>v===1?2:v===2?4:1)} disabled={finished} title="Change playback speed"><Zap size={16}/> {speed}×</button><button onClick={moveNextRound} disabled={finished}><SkipForward size={17}/> Next round</button><button onClick={()=>{setElapsed(total);setPlaying(false)}} disabled={finished}><FastForward size={17}/> Skip result</button></div>{finished?<button className="broadcast-finish" onClick={onComplete}><Trophy size={17}/> CONFIRM RESULT <ArrowRight size={17}/></button>:<div className="broadcast-playback-caption">Replay of the official simulation · No spoilers</div>}</footer>
+   <div className="lv-sig"><span><BoardNum value={strikesA} size="m"/><small>Sig. strikes</small></span><span><BoardNum value={strikesB} size="m"/><small>Sig. strikes</small></span></div>
+  </div>
+  {finished&&<div className="lv-result" role="status"><span className="lv-result-label"><Lamp tone="title"/>Winner · {fight.method} · round {fight.finishRound} · {fight.finishTime}</span><strong>{fight.tag?(fight.tag.winner??'Draw'):winner?.name??'Draw'}</strong>{fight.titleChange&&<span className="lv-result-title">New {fight.belt?BELT_SHORT[fight.belt]:'World'} champion</span>}</div>}
+  <p className="lv-call" key={`${round}-${latestAction?.t??Math.floor(local/60)}-${finished}`}><Volume2 size={16}/><span>{shownNote}{finished&&fight.titleChange?` The ${fight.belt?BELT_SHORT[fight.belt]:'World Crown'} has changed hands.`:''}</span></p>
+  {showStats&&<table className="lv-stats"><caption className="sr-only">Live fight statistics</caption><thead><tr><th scope="col" className="lv-sa">{nameA}</th><th scope="col">Live fight stats</th><th scope="col" className="lv-sb">{nameB}</th></tr></thead><tbody>
+   {stats.map(r=>{const max=Math.max(1,r.a,r.b);return <tr key={r.label}><td className="lv-sa"><span className="lv-bar"><i style={{width:`${r.a/max*100}%`}}/></span><b>{r.ta??r.a}</b></td><th scope="row">{r.label}</th><td className="lv-sb"><b>{r.tb??r.b}</b><span className="lv-bar"><i style={{width:`${r.b/max*100}%`}}/></span></td></tr>;})}
+   <tr className="lv-damage"><td className="lv-sa"><span className="lv-bar"><i style={{width:`${Math.min(100,damageA)}%`}}/></span><b>{damageA}</b></td><th scope="row">Damage taken</th><td className="lv-sb"><b>{damageB}</b><span className="lv-bar"><i style={{width:`${Math.min(100,damageB)}%`}}/></span></td></tr>
+  </tbody></table>}
+  <div className="lv-timeline">
+   <span className="lv-tl-label"><Clock3 size={15}/>{finished?'Final':`R${round+1} · minute ${minute}`}</span>
+   <ol className="lv-minutes" aria-label="Current round, minute by minute">{[0,1,2,3,4].map(i=><li key={i} className={`${local>=i*60?'is-reached':''} ${Math.floor(local/60)===i&&!finished?'is-now':''}`}><span>{i+1}</span><i><b style={{width:`${Math.max(0,Math.min(100,(local-i*60)/60*100))}%`}}/></i></li>)}</ol>
+   <ol className="lv-rounds" aria-label="Rounds">{fight.rounds.map((r,i)=><li key={r.number} className={i===round?'is-now':i<round?'is-past':''}><Lamp tone={i===round&&!finished?'amber':'off'}/>R{r.number}{i<round&&r.cards?<small>{r.scoreA}-{r.scoreB}</small>:null}</li>)}</ol>
+  </div>
+  <footer className="lv-controls"><div className="lv-transport" role="group" aria-label="Playback"><button className="bd-btn" onClick={()=>setPlaying(v=>!v)} disabled={finished} aria-label={playing?'Pause fight':'Resume fight'}>{playing?<Pause size={16}/>:<Play size={16}/>}{playing?'Pause':'Play'}</button><button className="bd-btn" onClick={()=>setSpeed(v=>v===1?2:v===2?4:1)} disabled={finished} title="Change playback speed"><Zap size={16}/>{speed}×</button><button className="bd-btn" onClick={moveNextRound} disabled={finished}><SkipForward size={16}/>Next round</button><button className="bd-btn" onClick={()=>{setElapsed(total);setPlaying(false)}} disabled={finished}><FastForward size={16}/>Skip result</button></div>
+   {finished?<button className="bd-btn bd-btn-next lv-confirm" onClick={onComplete}><Trophy size={16}/>Confirm result<ArrowRight size={16}/></button>:<span className="lv-note">Replay of the official simulation · no spoilers · {Math.floor(elapsed/60)} min elapsed</span>}</footer>
  </section></div>;
 }

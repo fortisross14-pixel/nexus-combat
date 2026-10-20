@@ -1,0 +1,128 @@
+/* ─────────────────────────────────────────────────────────────
+   Remaining pages on the arena board: shared primitives first,
+   then per-page corrections. Loaded after arena.css.
+   ───────────────────────────────────────────────────────────── */
+
+/* Page header: title first, the old kicker as a meta line beneath it */
+.pg-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 24px;margin:0 0 20px}
+.pg-head-text{display:grid;gap:8px;min-width:0}
+.pg-head h1{margin:0;font:900 clamp(40px,4.4vw,64px)/.9 var(--font-display);text-transform:uppercase;color:var(--n10);overflow-wrap:break-word}
+.pg-meta{font:700 12px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--n7)}
+.pg-desc{max-width:72ch;font-size:15px;line-height:1.5;color:var(--n8)}
+.pg-head-end{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Panels become board modules: square, flat, 1px seam */
+.nx-content .panel,.nx-content .stat-tile,.sr-body .panel{background:var(--n2)!important;border:var(--seam)!important;border-radius:0!important;box-shadow:none!important;background-image:none!important}
+.nx-content .panel::before,.nx-content .panel::after{display:none!important}
+.panel .bd-sh,.sr-body .bd-sh{padding:0 0 10px;margin:0 0 14px;border-bottom:var(--seam)}
+.bd-sh{flex-wrap:wrap}
+.bd-sh h2{font:800 22px/1 var(--font-display)!important;letter-spacing:.03em!important;text-transform:uppercase;color:var(--n10)!important}
+
+/* Old kickers that remain inside page bodies read as quiet meta, never coloured */
+.nx-content .eyebrow,.sr-body .eyebrow{font:700 11px var(--font-ui)!important;letter-spacing:.12em!important;text-transform:uppercase;color:var(--n7)!important;background:none!important}
+
+/* Common old atoms */
+.nx-content .empty-msg,.nx-content .chronicle-empty{color:var(--n8);font-size:14px;line-height:1.5}
+.nx-content .subtle-tag{font:600 12px var(--font-ui);letter-spacing:.06em;color:var(--n7);background:none;border:0}
+.nx-content h2,.nx-content h3{font-family:var(--font-display)}
+.nx-content button:not(.nx-btn):not(.bd-btn):not(.bd-link):not(.nx-icon){border-radius:2px}
+.nx-content input[type=search],.nx-content select,.nx-content .text-input{border-radius:2px!important;background:var(--n2)!important;border:var(--seam-strong)!important;color:var(--n10)!important}
+
+/* Generic segmented filters and tab rows used across older pages */
+.belt-tabs,.ledger-filters,.tr-tabs,.tr-subtabs,.cal-scope,.scope-switch,.dr-tabs,.legacy-tabs,.profile-tabs{gap:1px!important;background:var(--n4)!important;border:var(--seam)!important;border-radius:0!important;padding:0!important}
+.belt-tabs button,.ledger-filters button,.tr-tabs button,.tr-subtabs button,.cal-scope button,.scope-switch button,.dr-tabs button,.legacy-tabs button,.profile-tabs button{border:0!important;border-radius:0!important;background:var(--n2)!important;color:var(--n8)!important;box-shadow:none!important;font:600 13px var(--font-ui)!important;min-height:38px}
+.belt-tabs button:hover,.ledger-filters button:hover,.tr-tabs button:hover,.tr-subtabs button:hover,.cal-scope button:hover,.scope-switch button:hover,.dr-tabs button:hover,.legacy-tabs button:hover,.profile-tabs button:hover{background:var(--n3)!important;color:var(--n10)!important}
+.belt-tabs button.active,.ledger-filters button.active,.tr-tabs button.active,.tr-subtabs button.active,.cal-scope button.active,.scope-switch button.active,.dr-tabs button.active,.legacy-tabs button.active,.profile-tabs button.active,
+.tr-tabs button[aria-selected=true],.tr-subtabs button[aria-selected=true],.legacy-tabs button[aria-selected=true],.dr-tabs button[aria-selected=true]{background:var(--n9)!important;color:var(--n0)!important}
+
+/* Avatars on older pages share the square plate */
+.nx-content .avatar,.sr-body .avatar{border-radius:0!important}
+
+/* Square everywhere on working pages: no rounded cards or pills left over from the old system */
+.nx-content :where(div,section,article,aside,header,footer,button,a,li,label,span,small,em,b,strong,table,input,select,nav,details,summary),[role=dialog] :where(div,section,article,aside,header,footer,button,a,li,label,span,small,em,b,strong,table,input,select,nav),[role=dialog]{border-radius:0!important}
+.nx-content :where(.panel,.card,[class*=card],[class*=tile],[class*=pill],[class*=chip],[class*=badge],[class*=tag]){box-shadow:none!important}
+
+/* Universe picker */
+.uh{min-height:100vh;display:grid;align-content:start;gap:28px;padding:clamp(28px,6vw,72px) clamp(16px,6vw,96px);background:var(--n1)}
+.uh-head{display:flex;align-items:center;gap:16px}
+.uh-head h1{font:900 clamp(44px,5vw,64px)/.9 var(--font-display);letter-spacing:.06em;color:var(--n10)}
+.uh-sub{margin-top:4px;font:700 13px var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--n7)}
+.uh-board{max-width:1240px;border:var(--seam);border-top:3px solid var(--n9);background:var(--n0)}
+.uh-board-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 20px;padding:18px 20px;border-bottom:var(--seam)}
+.uh-board-head h2{font:900 clamp(30px,3.4vw,44px)/1 var(--font-display);text-transform:uppercase;color:var(--n10)}
+.uh-board-head p{max-width:60ch;font-size:15px;color:var(--n8)}
+.uh-slots{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--n4)}
+.uh-slot{display:flex;flex-direction:column;gap:18px;padding:20px;background:var(--n2);min-height:260px}
+.uh-slot-no{font:700 12px var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--n7)}
+.uh-year{display:flex;align-items:baseline;gap:10px;padding:10px 12px;background:var(--n0) var(--dot-plate);border:var(--seam);align-self:flex-start}
+.uh-facts{display:grid;gap:6px;margin:0}
+.uh-facts div{display:flex;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:var(--seam)}
+.uh-facts dt{font:700 11px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--n7)}
+.uh-facts dd{margin:0;font:600 14px var(--font-ui);color:var(--n9);font-variant-numeric:tabular-nums}
+.uh-actions{display:flex;gap:6px;margin-top:auto}
+.uh-open{flex:1;min-height:44px}
+.uh-open svg{color:var(--amber)}
+.uh-delete:hover{color:var(--loss)}
+.uh-empty{display:grid;gap:6px;font-size:14px;line-height:1.5;color:var(--n8)}
+.uh-empty strong{font:800 24px var(--font-display);text-transform:uppercase;color:var(--n9)}
+@media(max-width:860px){.uh-slots{grid-template-columns:1fr}.uh-slot{min-height:0}}
+
+.uh-year .uh-year-label{font:700 11px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--n7)}
+.uh-slot{text-align:left;align-items:stretch}
+.uh-year{align-self:flex-start}
+
+/* Fight archive: method is information, not a lamp colour */
+.nx-content .bout-method{background:var(--n4)!important;color:var(--n10)!important;border:0!important;font:800 13px var(--font-display)!important;letter-spacing:.06em}
+.nx-content .upset-tag{background:transparent!important;border:1px solid var(--n6)!important;color:var(--n10)!important}
+/* Statistics: scores are data, set in white tabular figures */
+.nx-content .legacy-value{color:var(--n10)!important;font-variant-numeric:tabular-nums}
+/* Calendar key dates: brand and event labels as text, no tinted chips */
+.nx-content .cal-key em{background:none!important;padding:0!important}
+.nx-content .cal-key em.world{color:var(--title)!important}
+.nx-content .cal-key em.continental{color:var(--n8)!important}
+
+/* Fight report and tale of the tape: lamps keep their jobs, no gradients */
+[role=dialog] .finish-badge,.nx-content .finish-badge{background:var(--n4)!important;color:var(--n10)!important;border:0!important}
+.tape-bar{background:var(--n5)!important}
+.tape-bar i{background:var(--n5)!important;background-image:none!important;color:var(--n10)!important;font-family:var(--font-board)!important}
+.tape-bar i:first-child{background:var(--n9)!important;color:var(--n0)!important}
+.tape-chances{background:var(--n0)!important;border:var(--seam)!important}
+.tape-factors span,.tape-factors b,.tape-chances b{color:var(--n10)!important;border-color:var(--n5)!important;background:transparent!important}
+.tape-row span,.tape-row b{color:var(--n8)!important}
+.tape-row .tape-better{color:var(--n10)!important;font-weight:800}
+.tape-form i{width:16px!important;height:16px!important;font-size:10px!important;color:var(--n0)!important}
+.tape-form .form-W{background:var(--win)!important}.tape-form .form-L{background:var(--loss)!important}.tape-form .form-D{background:var(--n6)!important;color:var(--n10)!important}
+.tape-belts span,.tape-belts b{background:transparent!important;border:0!important;color:var(--title)!important}
+
+/* Season finale: the board's year-end screen. No rays, no confetti; the year is lit in the title lamp. */
+.finale-backdrop{background:#000d!important;backdrop-filter:none!important}
+.finale-stage{background:var(--n0)!important;background-image:none!important;border:var(--seam)!important;border-top:3px solid var(--title)!important;box-shadow:none!important}
+.finale-stage::before,.finale-stage::after,.finale-main::before,.finale-main::after,.finale-bar::before,.finale-bar::after{display:none!important;content:none!important}
+.finale-particles{display:none!important}
+.finale-bar{background:var(--n0)!important;border-bottom:var(--seam)!important;color:var(--n8)!important}
+.finale-main{background:none!important}
+.finale-lit-year{display:block;margin:6px auto 0;font-size:clamp(96px,14vw,160px)!important;line-height:1}
+.finale-main h2{color:var(--n10)!important;background:none!important}
+.finale-main h2 em{color:var(--title)!important;background:none!important;-webkit-text-fill-color:currentColor!important}
+.finale-figures strong{color:var(--n10)!important;background:none!important;-webkit-text-fill-color:currentColor!important}
+.finale-figures>div{border-color:var(--n4)!important}
+.finale-honors,.finale-board>*{background:var(--n2)!important;border:var(--seam)!important;box-shadow:none!important}
+.finale-section-tag,.finale-moments>span{color:var(--n7)!important}
+.finale-moments strong{color:var(--n9)!important}
+.finale-go{min-height:48px;padding:0 24px;margin:8px auto 0;display:flex}
+.finale-bottom{border-top:var(--seam)!important;color:var(--n7)!important}
+
+/* The Surge broadcast on the board housing; the elapsed clock is a lit amber numeral */
+.surge-broadcast,.surge-arena-hero{background:var(--n1)!important;background-image:none!important}
+.surge-ring-surface{background:var(--n0) var(--dot-plate)!important}
+.surge-time strong{font-family:var(--font-board)!important;font-weight:800!important;color:var(--amber)!important}
+
+/* Tournaments: the Surge panel gives survivors and eliminations a full row so names stay readable */
+.nx-content .tr-surge-panel{grid-template-columns:minmax(260px,.9fr) minmax(0,1.1fr)!important}
+.nx-content .tr-surge-panel>:first-child{grid-row:span 2}
+.nx-content .tr-live-header{flex-wrap:wrap;padding-right:72px}
+@media(max-width:900px){.nx-content .tr-surge-panel{grid-template-columns:1fr!important}.nx-content .tr-surge-panel>:first-child{grid-row:auto}}
+
+/* Phones: result names wrap instead of clipping; the offseason chip stays one short line */
+@media(max-width:760px){.rs-side b{white-space:normal;overflow-wrap:break-word;align-items:flex-start;line-height:1.2}}
+@media(max-width:420px){.nx-draft{font-size:11px;letter-spacing:.04em;padding:0 8px}.nx-draft .lamp{display:none}}
