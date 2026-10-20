@@ -2,15 +2,19 @@ import {BrandLogo} from './components/BrandLogo';
 import {lazy,Suspense,useEffect,useMemo,useRef,useState} from 'react';
 import {rankText} from './components/ui';
 import {Flag} from './components/Flag';
-import {Activity,ArrowDownRight,ArrowRight,ArrowUpRight,BarChart3,BookOpen,CalendarClock,ChevronDown,Clock3,Crown,Download,FileClock,Filter,Globe2,Info,LayoutDashboard,Menu,Plus,RefreshCcw,Search,Medal,Shield,Star,Swords,Trophy,TrendingUp,Upload,Users, X, Zap} from 'lucide-react';
+import {Activity,ArrowDownRight,ArrowRight,ArrowUpRight,BarChart3,BookOpen,CalendarClock,ChevronDown,Clock3,Crown,Download,FileClock,Filter,Globe2,Info,LayoutDashboard,Menu,Plus,RefreshCcw,Search,Medal,Shield,Star,Swords,TrendingUp,Upload,Users, X, Zap} from 'lucide-react';
 import {Avatar} from './components/Avatar';
 import {useDialog} from './components/useDialog';
+import {BoardNum,Lamp,Meter,ModuleHead} from './components/board';
+import {brandStyle,rankLine,titlesOf} from './components/Bout';
+import {CareerPlot} from './components/CareerPlot';
+import './components/scout.css';
 import {CombatDesk,FightReport,FighterRecord} from './components/CombatDesk';
 import {buildLegacyView} from './engine/legacy';
 import {getFight,ledgerCount,ledgerFor,isWorldTitle} from './engine/archive';
 import {recentResults} from './engine/forecast';
 import {makePick,settlePick,toggleFollow,userOf,pickStats} from './engine/user';
-import {beltsHeld,BELT_SHORT,CONTINENTAL_BELTS,BRAND_BELTS,isBrandBelt,isInterimChampion,topReigns} from './engine/belts';
+import {beltsHeld,BELT_SHORT,CONTINENTAL_BELTS,BRAND_BELTS,isInterimChampion,topReigns} from './engine/belts';
 import {doublesHonors} from './engine/doubles';
 import './components/legacy.css';
 import './components/tournaments.css';
@@ -28,7 +32,7 @@ import './components/draft-room.css';
 import './components/sim-rail.css';
 import './components/live-arena.css';
 import {CALENDAR,ROUNDS_PER_YEAR} from './engine/competition';
-import {CareerChart,RadarChart} from './components/Charts';
+import {CareerChart} from './components/Charts';
 import {MENTAL_DESCRIPTIONS,RARITY_COLORS,REGIONS,SKILLS,START_YEAR,STYLES,STYLE_DESCRIPTIONS} from './engine/constants';
 import {abilitiesOf,ageOf,baseOf,conditionLabel,overallOf} from './engine/career';
 import {draftMove,draftAuto,draftFinish,createManagedWorld,advanceYears,advanceToBigEvent,hasPendingCard,prepareNextEvent,resolveCurrentEvent,resolveTournamentAction,resolveTournamentStage,resolveWholeTournament,exportWorld,loadWorld,upgradeWorld} from './engine/world';
@@ -53,10 +57,8 @@ type ProfileTab='Overview'|'Development'|'Fight Record'|'Career'|'Legacy';
 const compact=(n:number)=>new Intl.NumberFormat('en-US').format(n);
 function Rating({n,color=true}:{n:number;color?:boolean}){return <span className={`rating-num ${color?(n>=90?'eliterating':n>=80?'strongrating':n>=70?'normalrating':'lowrating'):''}`}>{n}</span>;}
 function Badge({rarity}:{rarity:Rarity}){return <span className="rarity-pill" style={{'--rare':RARITY_COLORS[rarity]} as React.CSSProperties}><i/>{rarity}</span>}
-function Pill({children,kind}:{children:React.ReactNode;kind?:string}){return <span className={`pill ${kind||''}`}>{children}</span>}
 function SectionHeading({eyebrow,title,end}:{eyebrow?:string;title:string;end?:React.ReactNode}){return <div className="section-heading"><div>{eyebrow&&<div className="eyebrow">{eyebrow}</div>}<h2>{title}</h2></div>{end}</div>}
 function Stat({label,value,icon,detail}:{label:string;value:string|number;icon:React.ReactNode;detail?:string}){return <div className="stat-tile"><div className="stat-icon">{icon}</div><div><span className="stat-label">{label}</span><div className="stat-value">{value}</div>{detail&&<small>{detail}</small>}</div></div>}
-function AppLogo(){return <div className="logo-mark"><BrandLogo brand="NEXUS" size={53}/><div className="brand-lines"><strong>NEXUS</strong><small>COMBAT CHRONICLE</small></div></div>}
 function NewWorldDialog({onCancel,onCreate}:{onCancel:()=>void;onCreate:(seed:number)=>void}){const [seed,setSeed]=useState(String(20582058));const ref=useDialog<HTMLDivElement>(onCancel);return <div className="overlay" onClick={onCancel}><div className="dialog" ref={ref} role="dialog" aria-modal="true" aria-labelledby="new-world-title" onClick={e=>e.stopPropagation()}><div className="dialog-top"><h2 id="new-world-title">Initialize new universe</h2><button className="icon-button" aria-label="Cancel" onClick={onCancel}><X size={18}/></button></div><p>Regenerate the founding 2058 roster. The current world will be overwritten on this device—export it first if you wish to keep it.</p><label htmlFor="seed">WORLD SEED</label><input id="seed" className="text-input" value={seed} onChange={e=>setSeed(e.target.value)} type="number"/><div className="dialog-actions"><button className="btn btn-quiet" onClick={onCancel}>Cancel</button><button className="btn btn-danger" onClick={()=>onCreate(Number(seed)||20582058)}>Create world <ArrowRight size={16}/></button></div></div></div>}
 export function App(){
   const [world,setWorld]=useState<World>(()=>loadWorld());
@@ -148,17 +150,22 @@ export function App(){
     {heading:'THE CHRONICLE',items:[{name:'Statistics',label:'Statistics',icon:<BarChart3 size={19}/>},{name:'Offseason',label:'Offseason',icon:<Activity size={19}/>},{name:'World History',label:'World History',icon:<FileClock size={19}/>}]}];
   if(universeOpen&&!hydrated)return <div className="game-loading"><strong>RESTORING SAVED UNIVERSES…</strong></div>;
   if(universeOpen)return <UniverseHub slots={slots} onOpen={openUniverse} onCreate={createUniverse} onDelete={deleteUniverse}/>;
-  return <div className={`app-frame ${!hydrated?'app-loading':''}`}>
-    {menuOpen&&<div className="mobile-scrim" onClick={()=>setMenuOpen(false)}/>}
-    <aside className={`sidebar ${menuOpen?'sidebar-open':''}`}>
-      <div className="sidebar-brand"><AppLogo/><button className="sidebar-close" aria-label="Close navigation" onClick={()=>setMenuOpen(false)}><X size={20}/></button></div>
-      <nav className="main-nav" aria-label="Primary navigation">{navGroups.map(group=><div className="nav-group" key={group.heading}><div className="sidebar-section-label">{group.heading}</div>{group.items.map(item=><button key={item.name} aria-current={page===item.name?'page':undefined} className={`nav-btn ${page===item.name?'selected':''}`} onClick={()=>navigate(item.name)}>{item.icon}<span>{item.label}</span>{page===item.name&&<span className="nav-active-dot"/>}</button>)}</div>)}</nav>
-      <div className="sidebar-bottom"><div className="system-label"><span className="live-dot"/> SYSTEM ONLINE <span className="right">v1.7.0</span></div><div className="world-stamp"><Globe2 size={19}/><div><strong>NEXUS // 2058+</strong><span>Founding simulation era</span></div></div><div className="sidebar-meta"><div>UNIVERSE SEED <strong>{world.seed}</strong></div><div>ACTIVE ATHLETES <strong>{active.length}</strong></div></div></div>
+  const slotNow=CALENDAR[world.round];
+  return <div className={`nx-app ${!hydrated?'app-loading':''}`}>
+    {menuOpen&&<div className="nx-scrim" onClick={()=>setMenuOpen(false)}/>}
+    <aside className={`nx-rail ${menuOpen?'is-open':''}`} aria-label="Game navigation">
+      <div className="nx-rail-brand"><BrandLogo brand="NEXUS" size={40}/><span><strong>NEXUS</strong><small>Combat Chronicle</small></span><button className="nx-icon nx-rail-close" aria-label="Close navigation" onClick={()=>setMenuOpen(false)}><X size={20}/></button></div>
+      <nav className="nx-nav" aria-label="Primary navigation">{navGroups.map(group=><div className="nx-nav-group" key={group.heading}><span className="nx-nav-label">{group.heading}</span>{group.items.map(item=><button key={item.name} aria-current={page===item.name?'page':undefined} className="nx-nav-item" onClick={()=>navigate(item.name)}>{item.icon}<span>{item.label}</span></button>)}</div>)}</nav>
+      <dl className="nx-rail-meta"><div><dt>Universe seed</dt><dd>{world.seed}</dd></div><div><dt>Active athletes</dt><dd>{active.length}</dd></div><div><dt>Build</dt><dd>v1.7.0 · saved locally</dd></div></dl>
     </aside>
-    <main className="main-area">
-      <header className="topbar"><button className="icon-button mobile-menu" onClick={()=>setMenuOpen(!menuOpen)} aria-label="Toggle menu"><Menu size={22}/></button><div className="topbar-identity"><span className="live-dot"/><span>GLOBAL CIRCUIT</span><i/> {world.draft?<button className="draft-pill" onClick={()=>navigate('Offseason')}>OFFSEASON · DRAFT ROOM OPEN</button>:<strong>{CALENDAR[world.round]?.month.toUpperCase()||'JANUARY'} · {CALENDAR[world.round]?.kind==='major'?'BIG EVENT':`WEEK ${CALENDAR[world.round]?.week}`}</strong>}</div><div className="topbar-actions"><div className="sim-float-controls sim-top"><button onClick={prepareEvent}><Zap size={15}/> Next event</button><button onClick={simulateToBig}><Crown size={15}/> Next big event</button><button onClick={()=>simulate(1)} title="Simulate the rest of this season"><CalendarClock size={15}/> Sim year</button></div><div className="year-capsule"><span>SIMULATION YEAR</span><strong>{world.year}</strong></div><button className="top-icon" onClick={()=>exportWorld(world)} title="Export world save" aria-label="Export world save"><Download size={18}/></button><button className="top-icon" onClick={()=>importRef.current?.click()} title="Import world save" aria-label="Import world save"><Upload size={18}/></button><button className="top-icon" onClick={()=>setResetOpen(true)} title="New universe" aria-label="New universe"><RefreshCcw size={18}/></button></div></header>
+    <main className="nx-main">
+      <header className="nx-top"><button className="nx-icon nx-menu" onClick={()=>setMenuOpen(!menuOpen)} aria-label="Toggle menu"><Menu size={22}/></button>
+        <div className="nx-when">{world.draft?<button className="nx-draft" onClick={()=>navigate('Offseason')}><Lamp tone="amber"/>Offseason<span className="nx-draft-more"> · draft room open</span></button>:<><strong>{slotNow?.month||'January'}</strong><span>{slotNow?.kind==='major'?'Big event':`Week ${slotNow?.week}`}</span></>}</div>
+        <div className="nx-sim" role="group" aria-label="Simulation"><button className="nx-btn nx-btn-lead" onClick={prepareEvent}><Zap size={16}/><span>Next event</span></button><button className="nx-btn" onClick={simulateToBig}><Crown size={16}/><span>Next big event</span></button><button className="nx-btn" onClick={()=>simulate(1)} title="Simulate the rest of this season"><CalendarClock size={16}/><span>Sim year</span></button></div>
+        <div className="nx-year"><span className="nx-year-label">Year</span><BoardNum value={world.year}/></div>
+        <div className="nx-tools"><button className="nx-icon" onClick={()=>exportWorld(world)} title="Export world save" aria-label="Export world save"><Download size={18}/></button><button className="nx-icon" onClick={()=>importRef.current?.click()} title="Import world save" aria-label="Import world save"><Upload size={18}/></button><button className="nx-icon" onClick={()=>setResetOpen(true)} title="New universe" aria-label="New universe"><RefreshCcw size={18}/></button></div></header>
       <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>{void importFile(e.target.files?.[0]);e.target.value='';}}/>
-      <div className="content-area"><Suspense fallback={<PageLoading/>}>
+      <div className="nx-content"><Suspense fallback={<PageLoading/>}>
         {page==='Dashboard'&&<>
           <Overview world={world} onFighter={openProfile} onFight={setSelectedFightId} onEvent={prepareEvent} onNav={p=>{if(p==='Divisions')setDivision('NOVA S');navigate(p);}}/>
           <FollowedPanel world={world} onFighter={openProfile}/>
@@ -178,7 +185,6 @@ export function App(){
         {page==='Offseason'&&(world.draft?<DraftRoom world={world} onFighter={openProfile} onMove={onDraftMove} onAuto={onDraftAuto} onFinish={onDraftFinish} onManager={onManager}/>:<Offseason world={world} onFighter={openProfile}/>)}
         {page==='World History'&&<WorldChronicle world={world} onFighter={openProfile}/>} 
       </Suspense></div>
-      <footer className="footer"><span>NEXUS COMBAT CHRONICLE <span className="tiny-sep">//</span> 2058—∞</span><span>v1.7.0 <span className="tiny-sep">|</span> AUTOSAVED LOCALLY</span></footer>
     </main>
     {compareId&&world.fighters.find(f=>f.id===compareId)&&<Suspense fallback={null}><CompareDialog world={world} fighter={world.fighters.find(f=>f.id===compareId)!} initialOpponent={compareWith} onClose={()=>{setCompareId(null);setCompareWith(null);}} onFighter={openProfile} onFight={setSelectedFightId}/></Suspense>}
     {selected&&legacy&&<Profile followed={userOf(world).followed.includes(selected.id)} onFollow={()=>setWorld(old=>toggleFollow(old,selected.id))} onCompare={()=>setCompareId(selected.id)} fighter={selected} world={world} year={world.year} tab={profileTab} setTab={setProfileTab} onFight={setSelectedFightId} onFighter={openProfile} legacy={legacy} onClose={()=>setSelectedId(null)}/>}
@@ -186,7 +192,7 @@ export function App(){
     {staged&&staged.fightId&&<LiveFight key={staged.fightId} fight={getFight(staged.world,staged.fightId)!} world={staged.world} onComplete={finishWatching}/>}
     {playback&&playback.queue[playback.index]&&<><LiveFight key={playback.queue[playback.index].id} fight={playback.queue[playback.index]} world={playback.world} onComplete={nextInQueue}/>{playback.queue.length>1&&<div className="queue-pill">LIVE FIGHT {playback.index+1} OF {playback.queue.length}</div>}</>}
     {finaleYear!==null&&!staged&&!playback&&<Suspense fallback={null}><SeasonFinale key={finaleYear} world={world} year={finaleYear} onClose={()=>setFinaleYear(null)}/></Suspense>}
-    <nav className="mobile-dock" aria-label="Quick navigation">{([{name:'Dashboard',label:'Home',icon:<LayoutDashboard size={19}/>},{name:'Event Calendar',label:'Events',icon:<CalendarClock size={19}/>},{name:'Fight Night',label:'Fight',icon:<Swords size={19}/>},{name:'Fighters',label:'Fighters',icon:<Users size={19}/>} ] as {name:Page;label:string;icon:React.ReactNode}[]).map(item=><button key={item.name} aria-current={page===item.name?'page':undefined} className={page===item.name?'active':''} onClick={()=>navigate(item.name)}>{item.icon}<span>{item.label}</span></button>)}</nav>
+    <nav className="nx-dock" aria-label="Quick navigation">{([{name:'Dashboard',label:'Home',icon:<LayoutDashboard size={19}/>},{name:'Event Calendar',label:'Calendar',icon:<CalendarClock size={19}/>},{name:'Fight Night',label:'Fight Night',icon:<Swords size={19}/>},{name:'Fighters',label:'Fighters',icon:<Users size={19}/>} ] as {name:Page;label:string;icon:React.ReactNode}[]).map(item=><button key={item.name} aria-current={page===item.name?'page':undefined} onClick={()=>navigate(item.name)}>{item.icon}<span>{item.label}</span></button>)}</nav>
     {resetOpen&&<NewWorldDialog onCancel={()=>setResetOpen(false)} onCreate={startNew}/>}
     {!hydrated&&<div className="game-loading"><div className="logo-glyph"><span>N</span></div><strong>RESTORING YOUR NEXUS UNIVERSE</strong></div>}
     {toast&&<div className="toast"><Info size={16}/>{toast}<button onClick={()=>setToast('')}><X size={14}/></button></div>}
@@ -197,15 +203,20 @@ function FollowedPanel({world,onFighter}:{world:World;onFighter:(id:string)=>voi
   const user=userOf(world);const stats=pickStats(user);
   const fighters=user.followed.map(id=>world.fighters.find(f=>f.id===id)).filter((f):f is Fighter=>!!f);
   const followedSet=new Set(user.followed);const news=world.events.filter(e=>followedSet.has(e.fighterId)).slice(-6).reverse();
-  return <div className="dashboard-columns"><section className="panel"><SectionHeading eyebrow="YOUR CORNER" title="Fighters you follow" end={<span className="subtle-tag">{fighters.length} FOLLOWED</span>}/>
-    {fighters.length===0?<p className="panel-intro">Open any fighter and press <b>Follow</b> to track their bouts, belts, injuries and retirement here.</p>:
-    <div className="followed-list">{fighters.slice(0,8).map(f=>{const last=recentResults(world,f.id,1)[0];return <button key={f.id} className="followed-row" onClick={()=>onFighter(f.id)}><Avatar fighter={f} size={40}/><span><b>{f.name}{beltsHeld(world,f.id).map(b=><span key={b} className="belt-chip"><Crown size={10}/>{BELT_SHORT[b]}</span>)}</b><small>{f.status==='active'?`${f.division} ${rankText(f.rank)}`:'Retired'} · {f.record.wins}-{f.record.losses}-{f.record.draws}{f.injuryUntil>world.year*ROUNDS_PER_YEAR+world.round?' · injured':''}</small></span><em>{last?`${last.result} · ${last.entry.m} · ${last.entry.y}`:'No bouts yet'}</em></button>;})}</div>}
-    {news.length>0&&<div className="feed-list" style={{marginTop:12}}>{news.map((e,i)=><button key={`${e.year}-${i}`} className="feed-row" onClick={()=>onFighter(e.fighterId)}><span className={`feed-mark ${e.type}`}><HistoryIcon type={e.type}/></span><span><strong>{world.fighters.find(f=>f.id===e.fighterId)?.name}</strong><small>{e.description}</small></span><time>{e.year}</time></button>)}</div>}
-  </section><section className="panel"><SectionHeading eyebrow="PICK'EM" title="Your main-event calls"/>
-    <div className="pick-stats" style={{justifyContent:'flex-start',margin:'6px 0 12px'}}><span><b>{stats.made}</b>picks</span><span><b>{Math.round(stats.accuracy*100)}%</b>correct</span><span><b>{stats.streak}</b>current streak</span><span><b>{stats.best}</b>best streak</span><span><b>{stats.upsets}</b>upsets called</span></div>
-    <p className="panel-intro">Before every main event on Fight Night, call the winner. Calls are scored when the result is revealed; correct picks on the underdog count as upsets called.</p>
-    {user.picks.slice(-5).reverse().map(p=>{const fight=getFight(world,p.fightId);return fight&&<div key={p.fightId} className="followed-row" style={{cursor:'default'}}><span><b className={p.correct?'positive':p.correct===false?'negative':''}>{p.correct?'✓':p.correct===false?'✗':'='} {world.fighters.find(f=>f.id===p.pick)?.name}</b><small>{fight.headline}</small></span><em>{Math.round(p.odds*100)}% chance</em></div>;})}
-  </section></div>;
+  return <div className="hm-grid hm-corner">
+    <section className="bd" aria-labelledby="corner-title"><ModuleHead id="corner-title" title="Your corner" code={`${fighters.length} followed`}/>
+      {fighters.length===0?<p className="bd-note">Open any fighter and press <b>Follow</b> to track their bouts, belts, injuries and retirement here.</p>:
+      <table className="bd-table"><thead><tr><th scope="col">Fighter</th><th scope="col">Standing</th><th scope="col" className="num">Last bout</th></tr></thead><tbody>{fighters.slice(0,8).map(f=>{const last=recentResults(world,f.id,1)[0];const injured=f.injuryUntil>world.year*ROUNDS_PER_YEAR+world.round;return <tr key={f.id}>
+        <td><button className="bd-link" onClick={()=>onFighter(f.id)}><Flag code={f.flag}/>{f.name}</button>{beltsHeld(world,f.id).length>0&&<small className="is-title">{beltsHeld(world,f.id).map(b=>BELT_SHORT[b]).join(' · ')}</small>}</td>
+        <td>{f.status==='active'?`${f.division} ${rankText(f.rank)}`:'Retired'}<small>{f.record.wins}-{f.record.losses}-{f.record.draws}{injured?' · injured':''}</small></td>
+        <td className="num">{last?<span className="hm-last"><Lamp tone={last.result==='W'?'win':last.result==='L'?'loss':'off'}/>{last.entry.m} · {last.entry.y}</span>:<span className="is-muted">No bouts yet</span>}</td></tr>;})}</tbody></table>}
+      {news.length>0&&<ol className="bd-feed">{news.map((e,i)=><li key={`${e.year}-${i}`}><button className="bd-link" onClick={()=>onFighter(e.fighterId)}>{world.fighters.find(f=>f.id===e.fighterId)?.name}</button><span>{e.description}</span><time>{e.year}</time></li>)}</ol>}
+    </section>
+    <section className="bd" aria-labelledby="picks-title"><ModuleHead id="picks-title" title="Pick'em · main-event calls"/>
+      <dl className="hm-picks"><div><dt>Picks</dt><dd><BoardNum value={stats.made}/></dd></div><div><dt>Correct</dt><dd><BoardNum value={`${Math.round(stats.accuracy*100)}%`} tone="win"/></dd></div><div><dt>Streak</dt><dd><BoardNum value={stats.streak}/></dd></div><div><dt>Best</dt><dd><BoardNum value={stats.best}/></dd></div><div><dt>Upsets called</dt><dd><BoardNum value={stats.upsets} tone="title"/></dd></div></dl>
+      <p className="bd-note">Before every main event on Fight Night, call the winner. Calls are scored when the result is revealed; correct picks on the underdog count as upsets called.</p>
+      {user.picks.length>0&&<ol className="bd-feed">{user.picks.slice(-5).reverse().map(p=>{const fight=getFight(world,p.fightId);return fight&&<li key={p.fightId}><Lamp tone={p.correct?'win':p.correct===false?'loss':'off'} label={p.correct?'Correct':p.correct===false?'Wrong':'Draw'}/><span><b>{world.fighters.find(f=>f.id===p.pick)?.name}</b> · {fight.headline}</span><time>{Math.round(p.odds*100)}%</time></li>;})}</ol>}
+    </section></div>;
 }
 function PageTop({tag,title,accent,description}:{tag:string;title:string;accent:string;description:string}){return <div className="page-title"><div><div className="eyebrow">{tag}</div><h1>{title} <span>{accent}</span></h1><p>{description}</p></div></div>}
 function HistoryIcon({type}:{type:WorldEvent['type']}){return type==='promotion'?<ArrowUpRight size={17}/>:type==='relegation'?<ArrowDownRight size={17}/>:type==='retirement'?<Clock3 size={17}/>:<Plus size={17}/>}
@@ -224,19 +235,61 @@ function Profile({fighter:f,world,year,tab,setTab,onFight,onFighter,legacy,onClo
   const fighterReigns=topReigns(world).filter(reign=>reign.fighterId===f.id);const countedReigns=fighterReigns.filter(r=>r.via!=='split');const successfulDefenses=fighterReigns.reduce((n,reign)=>n+reign.defenses,0);const pinnacles=(world.pinnacle??[]).filter(p=>p.winnerId===f.id);const tagReigns=doublesHonors(world,f.id);const supremacies=(world.supremacy??[]).filter(x=>x.winnerId===f.id);
   const maxReached=Math.max(...f.history.map(h=>h.overall));const yearsActive=f.history.length;
   const dialogRef=useDialog<HTMLElement>(onClose);
-  return <div className="profile-backdrop" onClick={onClose}><section ref={dialogRef} className="profile-drawer" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Fighter profile: ${f.name}`}><div className="drawer-top"><span><span className="live-dot"/> NEXUS ATHLETE ID <b>{f.id.toUpperCase()}</b></span><button className="icon-button" aria-label="Close fighter profile" onClick={onClose}><X size={20}/></button></div>
-    <div className="profile-banner"><div className="profile-img"><Avatar fighter={f} size={176}/></div><div className="profile-lead"><div className="profile-badges"><Badge rarity={f.rarity}/><Pill>{active?f.division:'RETIRED'}</Pill>{beltsHeld(world,f.id).map(b=><Pill key={b} kind="positive">{isBrandBelt(b)?`${b} WORLD CHAMPION`:`${BELT_SHORT[b].toUpperCase()} CHAMPION`}</Pill>)}{isInterimChampion(world,f.id)&&<Pill kind="positive">INTERIM CHAMPION</Pill>}{world.titleShot?.fighterId===f.id&&<Pill kind="positive">GUARANTEED TITLE SHOT</Pill>}{active&&world.tag?.champion===f.country&&<Pill>DOUBLES CROWN NATION</Pill>}</div><h2>{f.name}</h2><div className="fighter-nickname">“{f.nickname}”</div><div className="profile-nation"><span><Flag code={f.flag}/> {f.country}</span><i/> {f.style} <i/> <span className="mental-chip">{f.mentality}</span></div><div className="profile-actions" style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}}><button className={`follow-toggle ${followed?'on':''}`} onClick={onFollow}><Star size={14}/>{followed?'Following':'Follow'}</button>{active&&<button className="follow-toggle" onClick={onCompare}><Swords size={14}/>Compare</button>}</div></div></div>
-    <div className="profile-metrics"><div><span>BASE</span><strong>{base}</strong></div><div><span>SHAPE</span><strong className={f.shape>=0?'positive':'negative'}>{f.shape>=0?'+':''}{f.shape}</strong></div><div><span>CURRENT</span><strong className="eliterating">{overall}</strong></div><div><span>CONDITION</span><strong title={conditionLabel(f.condition)}>{f.condition}<small> /100</small></strong></div></div>
-    <div className="profile-tabs">{(['Overview','Development','Fight Record','Career','Legacy'] as ProfileTab[]).map(t=><button onClick={()=>setTab(t)} className={tab===t?'active':''} key={t}>{t}</button>)}</div>
-    <div className="profile-body">{tab==='Overview'&&<><div className="profile-section-head">FIGHTER INTELLIGENCE <span>AGE {age}</span></div><div className="bio-grid"><div><small>NATIONALITY</small><strong><Flag code={f.flag}/> {f.country}</strong></div><div><small>MENTALITY</small><strong>{f.mentality}</strong></div><div><small>HEIGHT</small><strong>{f.height} cm</strong></div><div><small>WEIGHT</small><strong>{f.weight} kg</strong></div><div><small>REACH</small><strong>{f.reach} cm</strong></div><div><small>PRO CIRCUIT SINCE</small><strong>{f.joinedYear}</strong></div></div>
-        {world.tournaments.some(t=>t.winnerId===f.id)&&<div className="crown-profile-honors"><Medal size={21}/><div><strong>{world.tournaments.filter(t=>t.winnerId===f.id).length}× TOURNAMENT CHAMPION</strong><span>{world.tournaments.filter(t=>t.winnerId===f.id).map(t=>`${t.year} ${t.kind==='OLYMPIAD'?'Olympiad Gold':t.kind==='CRUCIBLE'?'Crucible GP':'Surge Royale'}`).join(' · ')} · {f.fame||0} prestige</span></div></div>}{pinnacles.length>0&&<div className="crown-profile-honors pinnacle"><Trophy size={21}/><div><strong>{pinnacles.length}× PINNACLE CROWN</strong><span>{pinnacles.map(p=>`${p.year} · beat ${world.fighters.find(x=>x.id===p.loserId)?.name??''}`).join(' · ')}</span></div></div>}{fighterReigns.length>0&&<div className="crown-profile-honors"><Crown size={21}/><div><strong>{countedReigns.length||fighterReigns.length}× WORLD CHAMPION</strong><span>{[...new Set(fighterReigns.map(r=>world.crown.reigns.includes(r)?'World Crown':BRAND_BELTS.find(b=>world.crowns?.[b]?.reigns.includes(r))??''))].join(' · ')} · {successfulDefenses} successful defenses · {ledgerFor(world,e=>isWorldTitle(e)&&e.w===f.id).length} title-fight wins</span></div></div>}{tagReigns.length>0&&<div className="crown-profile-honors"><Users size={21}/><div><strong>DOUBLES CROWN · {f.country.toUpperCase()}</strong><span>{tagReigns.map(r=>`${r.startYear}${r.endYear?`–${r.endYear}`:'–present'} (${r.defenses} def.)`).join(' · ')}</span></div></div>}{supremacies.length>0&&<div className="crown-profile-honors"><Medal size={21}/><div><strong>{supremacies.length}× CONTINENTAL SUPREMACY</strong><span>{supremacies.map(x=>x.year).join(' · ')}</span></div></div>}{(()=>{const cont=CONTINENTAL_BELTS.flatMap(b=>world.belts[b].reigns.filter(r=>r.fighterId===f.id).map(r=>({b,r})));return cont.length>0&&<div className="crown-profile-honors"><Crown size={21}/><div><strong>{cont.length}× CONTINENTAL CHAMPION</strong><span>{cont.map(x=>`${BELT_SHORT[x.b]} ${x.r.startYear}${x.r.defenses?` (${x.r.defenses} def.)`:''}`).join(' · ')}</span></div></div>;})()}{f.injuryUntil>year*ROUNDS_PER_YEAR+world.round&&<div className="info-note inside medical-current"><Info size={18}/><span><strong>MEDICALLY SUSPENDED: {f.injuryName||'Injury'}</strong> · {Math.max(1,f.injuryUntil-(world.year*ROUNDS_PER_YEAR+world.round))} event-weeks remaining. The fighter cannot be booked before medical clearance.</span></div>}{f.condition>=40&&f.condition<60&&f.injuryUntil<=world.year*ROUNDS_PER_YEAR+world.round&&<div className="info-note inside medical-current"><Info size={18}/><span>Recovery required — condition {f.condition}/100. Cleared for future scheduling once condition reaches 60.</span></div>}<div className="fighter-profile-description"><strong>{f.style.toUpperCase()} · {f.mentality.toUpperCase()}</strong><p>{STYLE_DESCRIPTIONS[f.style]} {MENTAL_DESCRIPTIONS[f.mentality]}</p></div>
-        <div className="profile-section-head space-top">NINE CORE ABILITIES <span>AVERAGE {overall}</span></div><div className="abilities-layout"><RadarChart fighter={f} year={observedYear}/><div className="ability-bars">{SKILLS.map(s=><div className="ability-row" key={s}><span>{s}</span><div><i style={{width:`${skills[s]}%`}}/></div><b>{skills[s]}</b></div>)}</div></div>
-        <div className="info-note inside"><Info size={17}/><span>Style modifiers are balanced to average the displayed rating. Physical condition changes readiness, not the stored base score.</span></div>
+  const titles=titlesOf(world,f);const tourneyWins=world.tournaments.filter(t=>t.winnerId===f.id);
+  const cont=CONTINENTAL_BELTS.flatMap(b=>world.belts[b].reigns.filter(r=>r.fighterId===f.id).map(r=>({b,r})));
+  const honors:{label:string;detail:string}[]=[
+   ...(fighterReigns.length?[{label:`${countedReigns.length||fighterReigns.length}× world champion`,detail:`${[...new Set(fighterReigns.map(r=>world.crown.reigns.includes(r)?'World Crown':BRAND_BELTS.find(b=>world.crowns?.[b]?.reigns.includes(r))??''))].join(' · ')} · ${successfulDefenses} successful defenses · ${ledgerFor(world,e=>isWorldTitle(e)&&e.w===f.id).length} title-fight wins`}]:[]),
+   ...(pinnacles.length?[{label:`${pinnacles.length}× Pinnacle crown`,detail:pinnacles.map(p=>`${p.year} · beat ${world.fighters.find(x=>x.id===p.loserId)?.name??''}`).join(' · ')}]:[]),
+   ...(tourneyWins.length?[{label:`${tourneyWins.length}× tournament champion`,detail:`${tourneyWins.map(t=>`${t.year} ${t.kind==='OLYMPIAD'?'Olympiad Gold':t.kind==='CRUCIBLE'?'Crucible GP':'Surge Royale'}`).join(' · ')} · ${f.fame||0} prestige`}]:[]),
+   ...(tagReigns.length?[{label:`Doubles crown · ${f.country}`,detail:tagReigns.map(r=>`${r.startYear}${r.endYear?`–${r.endYear}`:'–present'} (${r.defenses} def.)`).join(' · ')}]:[]),
+   ...(supremacies.length?[{label:`${supremacies.length}× continental supremacy`,detail:supremacies.map(x=>x.year).join(' · ')}]:[]),
+   ...(cont.length?[{label:`${cont.length}× continental champion`,detail:cont.map(x=>`${BELT_SHORT[x.b]} ${x.r.startYear}${x.r.defenses?` (${x.r.defenses} def.)`:''}`).join(' · ')}]:[])];
+  const standing=[...titles,...(isInterimChampion(world,f.id)?['Interim champion']:[]),...(world.titleShot?.fighterId===f.id?['Guaranteed title shot']:[]),...(active&&world.tag?.champion===f.country?['Doubles crown nation']:[])];
+  const injured=f.injuryUntil>year*ROUNDS_PER_YEAR+world.round;
+  return <div className="sr-backdrop" onClick={onClose}><section ref={dialogRef} className="sr" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Fighter profile: ${f.name}`} style={brandStyle(f)}>
+    <div className="sr-bar"><span className="sr-bar-id">Scouting report · <b>{f.id.toUpperCase()}</b> · {observedYear}</span><button className="bd-btn" aria-pressed={followed} onClick={onFollow}><Star size={15} fill={followed?'currentColor':'none'}/>{followed?'Following':'Follow'}</button>{active&&<button className="bd-btn" onClick={onCompare}><Swords size={15}/>Compare</button>}<button className="nx-icon" aria-label="Close fighter profile" onClick={onClose}><X size={20}/></button></div>
+    <header className="sr-head">
+      <div className="sr-portrait"><Avatar fighter={f} size={168}/></div>
+      <div className="sr-ident">
+        <h2>{f.name}</h2>
+        <span className="sr-rank">{active&&f.rank===0&&<Lamp tone="title"/>}{rankLine(f)}<span className="sr-rarity" style={{color:RARITY_COLORS[f.rarity]}}>{f.rarity}</span></span>
+        <p className="sr-nick">“{f.nickname}”</p>
+        <p className="sr-line"><Flag code={f.flag}/> {f.country} · {f.style} · {f.mentality} · Age {age}</p>
+        {standing.length>0&&<p className="sr-titles">{standing.join(' · ')}</p>}
+      </div>
+      <dl className="sr-board">
+        <div><dt>Overall</dt><dd><BoardNum value={overall} size="xl"/></dd></div>
+        <div><dt>Official record</dt><dd className="sr-record"><BoardNum value={f.record.wins} size="l" tone="win"/><span aria-hidden="true">-</span><BoardNum value={f.record.losses} size="l" tone="loss"/><span aria-hidden="true">-</span><BoardNum value={f.record.draws} size="l" tone="dim"/></dd></div>
+      </dl>
+    </header>
+    <dl className="sr-metrics">
+      <div><dt>Base</dt><dd>{base}</dd></div>
+      <div><dt>Shape</dt><dd className={f.shape>=0?'is-up':'is-down'}>{f.shape>=0?'+':''}{f.shape}</dd></div>
+      <div className="sr-cond"><dt>Condition <span>{conditionLabel(f.condition)}</span></dt><dd><b>{f.condition}</b><Meter value={f.condition} segments={25} tone={f.condition<60?'loss':undefined} label="Condition"/></dd></div>
+    </dl>
+    <div className="sr-tabs" role="tablist" aria-label="Profile sections">{(['Overview','Development','Fight Record','Career','Legacy'] as ProfileTab[]).map(t=><button role="tab" aria-selected={tab===t} onClick={()=>setTab(t)} key={t}>{t}</button>)}</div>
+    <div className="sr-body" role="tabpanel" aria-label={tab}>{tab==='Overview'&&<>
+        {injured&&<p className="sr-alert"><Lamp tone="loss"/><span><strong>Medically suspended: {f.injuryName||'Injury'}</strong> · {Math.max(1,f.injuryUntil-(world.year*ROUNDS_PER_YEAR+world.round))} event-weeks remaining. The fighter cannot be booked before medical clearance.</span></p>}
+        {f.condition>=40&&f.condition<60&&!injured&&<p className="sr-alert"><Lamp tone="amber"/><span>Recovery required — condition {f.condition}/100. Cleared for future scheduling once condition reaches 60.</span></p>}
+        <div className="sr-cols">
+          <section className="sr-sec" aria-labelledby="sr-abil"><h3 id="sr-abil">Abilities <span>average {overall}</span></h3>
+            <ul className="sr-abilities">{SKILLS.map(sk=><li key={sk}><span>{sk}</span><Meter value={skills[sk]} label={sk}/><b>{skills[sk]}</b></li>)}</ul>
+            <p className="sr-fine">Style modifiers are balanced to average the displayed rating. Physical condition changes readiness, not the stored base score.</p>
+          </section>
+          <section className="sr-sec" aria-labelledby="sr-phys"><h3 id="sr-phys">Physical</h3>
+            <dl className="sr-spec"><div><dt>Nationality</dt><dd><Flag code={f.flag}/> {f.country}</dd></div><div><dt>Height</dt><dd>{f.height} cm</dd></div><div><dt>Weight</dt><dd>{f.weight} kg</dd></div><div><dt>Reach</dt><dd>{f.reach} cm</dd></div><div><dt>Mentality</dt><dd>{f.mentality}</dd></div><div><dt>Pro circuit since</dt><dd>{f.joinedYear}</dd></div></dl>
+            <h3 className="sr-sub">Scout’s notes · {f.style} · {f.mentality}</h3>
+            <p className="sr-notes">{STYLE_DESCRIPTIONS[f.style]} {MENTAL_DESCRIPTIONS[f.mentality]}</p>
+            {(()=>{const ranked=[...SKILLS].sort((x,y)=>skills[y]-skills[x]);return <dl className="sr-sw"><div><dt>Strengths</dt><dd>{ranked.slice(0,3).map(k=>`${k} ${skills[k]}`).join(' · ')}</dd></div><div><dt>Weaknesses</dt><dd>{ranked.slice(-2).reverse().map(k=>`${k} ${skills[k]}`).join(' · ')}</dd></div></dl>;})()}
+          </section>
+        </div>
+        <section className="sr-sec" aria-labelledby="sr-plot"><h3 id="sr-plot">Career · every bout</h3><CareerPlot world={world} id={f.id} name={f.name}/></section>
+        {honors.length>0&&<section className="sr-sec" aria-labelledby="sr-hon"><h3 id="sr-hon">Honours</h3><ul className="sr-honors">{honors.map(h=><li key={h.label}><b>{h.label}</b><span>{h.detail}</span></li>)}</ul></section>}
       </>}
       {tab==='Development'&&<><div className="profile-section-head">CAREER TRAJECTORY <span>YEAR {observedYear}</span></div><CareerChart fighter={f} year={observedYear}/><div className="career-metrics"><div><span>CAREER SHAPE</span><strong>{f.archetype}</strong></div><div><span>HIGHEST RECORDED OVR</span><strong>{maxReached}</strong></div><div><span>YEARS DOCUMENTED</span><strong>{yearsActive}</strong></div></div><div className="profile-section-head space-top">WHAT THE RATINGS MEAN</div><div className="explain-cards"><div><TrendingUp size={17}/><strong>Annual base</strong><span>Innate career trajectory. Advances annually and can fall with age.</span></div><div><Zap size={17}/><strong>Shape</strong><span>Recent results, streaks and quality of finishes drive confidence independently of base.</span></div><div><Activity size={17}/><strong>Condition</strong><span>Damage, injury and recovery determine readiness between circuits.</span></div></div></>}
       {tab==='Fight Record'&&<FighterRecord fighter={f} world={world} onFight={onFight}/>}
       {tab==='Career'&&<Suspense fallback={<PageLoading/>}><CareerChronicle world={world} fighter={f} onFight={onFight}/></Suspense>}
       {tab==='Legacy'&&<Suspense fallback={<PageLoading/>}><FighterLegacyPanel world={world} view={legacy} fighter={f} onFighter={onFighter} onFight={onFight}/></Suspense>}
-    </div><div className="drawer-footer"><span><span className="live-dot"/> {active?'ACTIVE COMPETITOR':'RETIRED VETERAN'}</span><button onClick={onClose}>Close profile <X size={15}/></button></div>
+    </div><div className="sr-foot"><Lamp tone={active?'win':'off'}/>{active?'Active competitor':'Retired veteran'}<button className="bd-btn bd-btn-quiet" onClick={onClose}>Close profile<X size={15}/></button></div>
   </section></div>;
 }

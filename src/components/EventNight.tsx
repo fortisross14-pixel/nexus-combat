@@ -1,9 +1,10 @@
 import {BrandLogo} from './BrandLogo';
 import {useEffect,useMemo,useState} from 'react';
-import {ArrowRight,ChevronRight,Crown,Eye,Flame,Play,SkipForward,Swords,Trophy} from 'lucide-react';
+import {ArrowRight,ChevronRight,Eye,Play,SkipForward,Swords,Trophy} from 'lucide-react';
 import {Avatar} from './Avatar';
 import {Flag} from './Flag';
-import {BeltChips,RankTag,Heading} from './ui';
+import {BoardNum,Lamp,ModuleHead} from './board';
+import {Corner,Staff,brandStyle} from './Bout';
 import {CALENDAR,ROUNDS_PER_YEAR,isBigEvent} from '../engine/competition';
 import {BRAND_INFO,brandOf,divisionLabel,isTopDivision,isWorldTier} from '../engine/constants';
 import {overallOf} from '../engine/career';
@@ -12,9 +13,9 @@ import {forecastBout,headToHead} from '../engine/forecast';
 import {BELT_SHORT,isContinentalRound,titleBrandAt,otherBrand,DOUBLES_ROUND} from '../engine/belts';
 import {eventNameAt,kindAt} from '../engine/tournaments';
 import {pickKey,pickStats,userOf} from '../engine/user';
-import {EventLogo,EventWordmark,identityFor,identityStyle} from './EventIdentity';
+import {EventLogo,identityFor,identityStyle} from './EventIdentity';
 import type {Fight,Fighter,PendingFight,World} from '../engine/types';
-import './event-night.css';
+import './event-board.css';
 
 const divisionName=(d:string)=>divisionLabel(d);
 /** Brand badge (NOVA / ONYX) for a division. */
@@ -45,35 +46,28 @@ export function boutTags(world:World,a:Fighter,b:Fighter,p?:Pick<PendingFight,'k
  if(p&&isTopDivision(p.division)&&!p.tag&&!p.supremacy&&a.rank>0&&b.rank>0&&a.rank<=5&&b.rank<=5&&!p.titleFight)tags.push({text:'Top-5 clash'});
  return tags;
 }
-function Corner({f,world,side,onFighter}:{f:Fighter;world:World;side:'a'|'b';onFighter:(id:string)=>void}){
- return <button className={`card-corner corner-${side}`} onClick={()=>onFighter(f.id)}>
-  <Avatar fighter={f} size={74}/>
-  <span className="cc-text"><span className="cc-rank"><BrandTag division={f.division}/><RankTag rank={f.rank}/><small>{brandOf(f.division)?(isTopDivision(f.division)?'S':'II'):divisionName(f.division)}</small></span><b>{f.name}</b><small><Flag code={f.flag}/>{f.country} · {f.style} · {f.mentality}</small><small className="cc-record">{f.record.wins}-{f.record.losses}-{f.record.draws} · OVR {overallOf(f,world.year)}</small><span className="cc-belts"><BeltChips world={world} id={f.id}/></span></span>
- </button>;
+
+/** Slot, stakes and length of a bout on the card. */
+function boutMeta(p:PendingFight,i:number):{slot:string;what:string;rounds?:number}{
+ const slot=i===0?'Main event':i===1?'Co-main event':`Bout ${i+1}`;
+ const brand=p.belt??brandOf(p.division)??'';
+ if(p.kind==='pinnacle')return {slot,what:'The Pinnacle unifier · NOVA v ONYX',rounds:5};
+ if(p.kind==='contract')return {slot,what:'Title-shot contract · NOVA v ONYX',rounds:3};
+ if(p.kind==='unification')return {slot,what:`${brand} world title unification`,rounds:5};
+ if(p.kind==='interim')return {slot,what:`Interim ${brand} world title`,rounds:5};
+ if(p.titleFight)return {slot,what:`${brand} world title`,rounds:5};
+ if(p.kind==='eliminator')return {slot,what:`${brand} title eliminator`,rounds:3};
+ if(p.tag)return {slot,what:`Doubles${p.tag.title?' crown':p.tag.challengerLock?' challenger lock':' ranking'} · tag team 2 v 2`};
+ if(p.supremacy)return {slot,what:'Continental supremacy · all against all',rounds:3};
+ return {slot,what:divisionName(p.division),rounds:3};
 }
+
 function TagSide({world,country,ids,onFighter,side}:{world:World;country:string;ids:[string,string];onFighter:(id:string)=>void;side:'a'|'b'}){
  const athletes=ids.map(id=>world.fighters.find(f=>f.id===id)).filter((f):f is Fighter=>!!f);
- return <div className={`tag-team-side tag-team-${side}`}><div className="tag-country"><Flag code={athletes[0]?.flag}/><strong>{country}</strong><small>2 FIGHTERS · ONE TEAM</small></div>
-  <div className="tag-lineup">{athletes.map((f,i)=><button key={f.id} onClick={()=>onFighter(f.id)}><Avatar fighter={f} size={57}/><span><b>{f.name}</b><small>{i===0?'STARTER':'TAG PARTNER'} · {f.style}</small><small>{f.mentality} · {overallOf(f,world.year)} OVR · {f.condition}% fit</small></span></button>)}</div>
+ return <div className={`ev-tag corner-${side}`}>
+  <strong className="ev-tag-nation"><Flag code={athletes[0]?.flag}/>{country}</strong>
+  {athletes.map((f,i)=><button key={f.id} className="ev-tag-fighter" onClick={()=>onFighter(f.id)}><Avatar fighter={f} size={52}/><span><b>{f.name}</b><small>{i===0?'Starter':'Tag partner'} · {f.style} · {overallOf(f,world.year)} OVR · {f.condition}% fit</small></span></button>)}
  </div>;
-}
-function ChanceBar({a,b,chance}:{a:Fighter;b:Fighter;chance:number}){
- const pa=Math.round(chance*100);
- return <div className="chance"><div className="chance-nums"><b>{pa}%</b><small>WIN CHANCE</small><b>{100-pa}%</b></div><div className="chance-bar" aria-label={`${a.name} ${pa}%, ${b.name} ${100-pa}%`}><i style={{width:`${pa}%`}}/></div></div>;
-}
-function headerFor(p:PendingFight,i:number){
- const slot=i===0?'MAIN EVENT':i===1?'CO-MAIN EVENT':`BOUT ${i+1}`;
- const brand=p.belt??brandOf(p.division)??'';
- const what=p.kind==='pinnacle'?'THE PINNACLE UNIFIER · NOVA v ONYX · 5 ROUNDS':
-  p.kind==='contract'?'TITLE-SHOT CONTRACT · NOVA v ONYX · 3 ROUNDS':
-  p.kind==='unification'?`${brand} WORLD TITLE UNIFICATION · 5 ROUNDS`:
-  p.kind==='interim'?`INTERIM ${brand} WORLD TITLE · 5 ROUNDS`:
-  p.titleFight?`${brand} WORLD TITLE · 5 ROUNDS`:
-  p.kind==='eliminator'?`${brand} TITLE ELIMINATOR · 3 ROUNDS`:
-  p.tag?`DOUBLES${p.tag.title?' CROWN':p.tag.challengerLock?' CHALLENGER LOCK':' RANKING'} · ${p.tag.a.toUpperCase()} v ${p.tag.b.toUpperCase()} · TAG TEAM 2v2`:
-  p.supremacy?'CONTINENTAL SUPREMACY · ALL AGAINST ALL · 3 ROUNDS':
-  `${divisionName(p.division).toUpperCase()} · 3 ROUNDS`;
- return `${slot} · ${what}`;
 }
 
 /** The event screen: the world-tier card, a Skip/Simulate choice per bout, then Start event. */
@@ -87,40 +81,71 @@ export function EventNight({world,onStart,onPrepare,onTournament,onFighter,onFig
  const ident=identityFor(special||slot.name,isContinentalRound(world.round));
  const fighter=(id:string)=>world.fighters.find(f=>f.id===id)!;
  const main=card?card.filter(p=>!p.prelim):[];const prelims=card?card.filter(p=>p.prelim):[];
- const chances=useMemo(()=>main.map(p=>p.tag?0.5:forecastBout(fighter(p.fighterA),fighter(p.fighterB),world.year,p.titleFight||p.kind==='pinnacle'?5:3,160).winA),[key,card?.length]);// eslint-disable-line react-hooks/exhaustive-deps
+ const chances=useMemo(()=>main.map(p=>p.tag?null:forecastBout(fighter(p.fighterA),fighter(p.fighterB),world.year,p.titleFight||p.kind==='pinnacle'?5:3,160).winA),[key,card?.length]);// eslint-disable-line react-hooks/exhaustive-deps
  const user=userOf(world);const stats=pickStats(user);const myPick=user.pendingPick?.key===pickKey(world.year,world.round)?user.pendingPick.pick:null;
  const toggle=(i:number,on:boolean)=>setWatch(old=>{const next=new Set(old);if(on)next.add(i);else next.delete(i);return next;});
  const tb=titleBrandAt(world.round);
- const eyebrow=slot.name==='THE PINNACLE'?'THE BIGGEST NIGHT OF THE YEAR · NOVA v ONYX':tb?`${tb} TITLE NIGHT · ${otherBrand(tb)} TITLE ELIMINATOR`:world.round===DOUBLES_ROUND?'THE DOUBLES CROWN':isBigEvent(world.round)?'MONTHLY BIG EVENT':`${slot.month} · WEEK ${slot.week}`;
- const hero=<section className="night-hero themed en-hero" style={identityStyle(ident)}><div className="eyebrow">{eyebrow}</div><div className="hero-brand" key={special||slot.name}><EventLogo id={ident} size={70}/><h1><EventWordmark id={ident}>{special||slot.name}</EventWordmark></h1></div><p className="ev-tagline">{ident.tagline}</p><div className="night-brands"><BrandLogo brand="NOVA" size={69}/><BrandLogo brand="ONYX" size={69}/></div><p>{slot.month} {world.year} · Event {world.round+1} of {ROUNDS_PER_YEAR} · NOVA and ONYX</p></section>;
+ const billing=slot.name==='THE PINNACLE'?'The biggest night of the year · NOVA v ONYX':tb?`${tb} title night · ${otherBrand(tb)} title eliminator`:world.round===DOUBLES_ROUND?'The Doubles Crown':isBigEvent(world.round)?'Monthly big event':`Week ${slot.week}`;
+ const titleFights=main.filter(p=>p.titleFight||p.kind==='pinnacle'||p.kind==='unification'||p.kind==='interim'||p.tag?.title).length;
+
+ const head=<header className="ev-head">
+  <EventLogo id={ident} size={88}/>
+  <div className="ev-head-text">
+   <h1>{special||slot.name}</h1>
+   <p className="ev-tagline">{ident.tagline}</p>
+   <p className="ev-meta"><b>{billing}</b> · {slot.month} {world.year} · Event {world.round+1} of {ROUNDS_PER_YEAR}</p>
+  </div>
+  <div className="ev-head-side">
+   <span className="ev-brands"><BrandLogo brand="NOVA" size={48}/><BrandLogo brand="ONYX" size={48}/></span>
+   {card&&<dl className="ev-figs"><div><dt>Bouts</dt><dd><BoardNum value={main.length+prelims.length}/></dd></div><div><dt>Title fights</dt><dd><BoardNum value={titleFights} tone={titleFights?'title':'dim'}/></dd></div></dl>}
+  </div>
+ </header>;
 
  if(!card){
   const tournamentNext=!!kindAt(world.year,world.round)||!!world.activeTournamentId;
-  return <div className="event-night">{hero}
-   <section className="panel en-next"><div><div className="eyebrow">UP NEXT</div><h2>{special||slot.name}</h2><p>{tournamentNext?'This month’s big event is a tournament. Brackets and entrants are revealed when it opens.':'Prepare the event to see its world-tier card. Continental and regional divisions fight in the background; their results are in the Calendar.'}</p></div>
-    {tournamentNext?<button className="btn btn-primary" onClick={onTournament}><Trophy size={16}/> Open {special||'tournament'} <ArrowRight size={16}/></button>:<button className="btn btn-primary" onClick={onPrepare}><Swords size={16}/> Prepare the card <ArrowRight size={16}/></button>}</section>
+  return <div className="ev" style={identityStyle(ident)}>{head}
+   <section className="ev-upnext" aria-labelledby="ev-upnext">
+    <h2 id="ev-upnext"><Lamp tone="amber"/>Up next</h2>
+    <p>{tournamentNext?'This month’s big event is a tournament. Brackets and entrants are revealed when it opens.':'Prepare the event to see its world-tier card. Continental and regional divisions fight in the background; their results are in the Calendar.'}</p>
+    {tournamentNext?<button className="bd-btn bd-btn-next" onClick={onTournament}><Trophy size={16}/>Open {special||'tournament'}<ArrowRight size={16}/></button>:<button className="bd-btn bd-btn-next" onClick={onPrepare}><Swords size={16}/>Prepare the card<ArrowRight size={16}/></button>}
+   </section>
    <LastEvent world={world} onFight={onFight} onFighter={onFighter}/>
   </div>;
  }
  const liveCount=watch.size;
- return <div className="event-night">{hero}
-  <section className="en-card">
-   <Heading eyebrow="WORLD-TIER CARD" title="Tonight’s fights" end={<div className="en-bulk"><button onClick={()=>setWatch(new Set(main.map((_,i)=>i)))}>Simulate all</button><button onClick={()=>setWatch(new Set())}>Skip all</button></div>}/>
-   {main.map((p,i)=>{const a=fighter(p.fighterA),b=fighter(p.fighterB);const live=watch.has(i);const tags=boutTags(world,a,b,p);
-    return <article key={`${p.fighterA}-${p.fighterB}`} className={`card-bout ${i===0?'is-main':''} ${live?'is-live':''}`}>
-     <header><span>{(p.titleFight||p.kind||p.tag?.title)&&<Crown size={13}/>} {headerFor(p,i)}</span><span className="cb-mode">{live?'SIMULATE LIVE':'SKIP TO RESULT'}</span></header>
-     {p.tag?<div className="cb-body tag-bout-body"><TagSide world={world} country={p.tag.a} ids={p.tag.teamA} onFighter={onFighter} side="a"/><div className="cb-mid"><span className="cb-vs">VS</span><small className="tag-match-note">2 v 2<br/>LIVE TAGS</small></div><TagSide world={world} country={p.tag.b} ids={p.tag.teamB} onFighter={onFighter} side="b"/></div>:
-      <div className="cb-body"><Corner f={a} world={world} side="a" onFighter={onFighter}/><div className="cb-mid"><span className="cb-vs">VS</span><ChanceBar a={a} b={b} chance={chances[i]??.5}/></div><Corner f={b} world={world} side="b" onFighter={onFighter}/></div>}
-     {tags.length>0&&<div className="cb-tags">{tags.map(t=><span key={t.text} className={t.hot?'hot':''}>{t.hot&&<Flame size={11}/>}{t.text}</span>)}</div>}
-     <footer><div className="cb-toggle" role="radiogroup" aria-label="Skip or simulate this fight"><button role="radio" aria-checked={!live} className={!live?'on':''} onClick={()=>toggle(i,false)}><SkipForward size={14}/> Skip</button><button role="radio" aria-checked={live} className={live?'on live':''} onClick={()=>toggle(i,true)}><Eye size={14}/> Simulate</button></div>
-      {i===0&&!p.tag&&<div className="cb-pick"><span>YOUR PICK</span>{[a,b].map(f=><button key={f.id} className={myPick===f.id?'chosen':''} onClick={()=>onPick(f.id)}>{myPick===f.id?'✓ ':''}{f.name.split(' ').at(-1)}</button>)}</div>}
-      {!p.tag&&<button className="cb-tape" onClick={()=>onTape(a.id,b.id)}>Tale of the tape <ChevronRight size={14}/></button>}</footer>
-    </article>;})}
-   {prelims.length>0&&<div className="en-prelims"><div className="eyebrow">ALSO ON THE CARD · RESULTS AFTER THE EVENT</div>{prelims.map(p=>{const a=fighter(p.fighterA),b=fighter(p.fighterB);return <div key={`${p.fighterA}-${p.fighterB}`}><span><Flag code={a.flag}/>{p.tag?<><b>{p.tag.a}</b> · {p.tag.teamA.map(id=>fighter(id).name).join(' / ')}</>:<>{a.name} <RankTag rank={a.rank}/></>}</span><i>vs</i><span><Flag code={b.flag}/>{p.tag?<><b>{p.tag.b}</b> · {p.tag.teamB.map(id=>fighter(id).name).join(' / ')}</>:<>{b.name} <RankTag rank={b.rank}/></>}</span><small>{p.tag?'2v2 TAG':divisionName(p.division)}</small></div>;})}</div>}
-   {main.length===0&&<p className="empty-msg">No world-tier fighters were fit to fight this week. Start the event to move on.</p>}
+ return <div className="ev" style={identityStyle(ident)}>{head}
+  <section className="ev-card" aria-labelledby="ev-card-title">
+   <div className="ev-card-head"><h2 id="ev-card-title">Tonight’s card</h2><span className="bd-code">World tier · {main.length} bout{main.length===1?'':'s'}</span>
+    <div className="ev-bulk" role="group" aria-label="All bouts"><button className="bd-btn" onClick={()=>setWatch(new Set(main.map((_,i)=>i)))}><Eye size={15}/>Simulate all</button><button className="bd-btn" onClick={()=>setWatch(new Set())}><SkipForward size={15}/>Skip all</button></div></div>
+   <ol className="ev-bouts">{main.map((p,i)=>{const a=fighter(p.fighterA),b=fighter(p.fighterB);const live=watch.has(i);const tags=boutTags(world,a,b,p);const meta=boutMeta(p,i);
+    const mode=<div className="ev-mode" role="radiogroup" aria-label={`${meta.slot}: skip or simulate`}>
+     <button role="radio" aria-checked={!live} onClick={()=>toggle(i,false)}><SkipForward size={14}/>Skip</button>
+     <button role="radio" aria-checked={live} className="is-sim" onClick={()=>toggle(i,true)}><Eye size={14}/>Simulate</button>
+    </div>;
+    const pick=(f:Fighter)=>i===0&&!p.tag?<button className="ev-pick" aria-pressed={myPick===f.id} onClick={()=>onPick(f.id)}>{myPick===f.id?'Your pick':`Pick ${f.name.split(' ').at(-1)}`}</button>:null;
+    return <li key={`${p.fighterA}-${p.fighterB}`} className={`ev-bout ${i===0?'is-main':'is-compact'} ${live?'is-live':''}`}>
+     {p.tag?<div className="bout"><TagSide world={world} country={p.tag.a} ids={p.tag.teamA} onFighter={onFighter} side="a"/><Staff slot={meta.slot} what={meta.what}>{mode}</Staff><TagSide world={world} country={p.tag.b} ids={p.tag.teamB} onFighter={onFighter} side="b"/></div>:
+      <div className="bout"><Corner f={a} world={world} side="a" size={i===0?176:64} onFighter={onFighter}>{pick(a)}</Corner><Staff slot={meta.slot} what={meta.what} rounds={meta.rounds} chance={chances[i]}>{mode}</Staff><Corner f={b} world={world} side="b" size={i===0?176:64} onFighter={onFighter}>{pick(b)}</Corner></div>}
+     {(tags.length>0||!p.tag)&&<footer className="ev-bout-foot">{tags.length>0&&<p className="bout-notes">{tags.map(t=><span key={t.text} className={t.hot?'is-hot':''}>{t.text}</span>)}</p>}{!p.tag&&<button className="bd-btn bd-btn-quiet" onClick={()=>onTape(a.id,b.id)}>Tale of the tape<ChevronRight size={14}/></button>}</footer>}
+    </li>;})}</ol>
+   {prelims.length>0&&<section className="bd ev-prelims" aria-labelledby="ev-prelims"><ModuleHead id="ev-prelims" as="h3" title="Also on the card" code="Results after the event"/>
+    <ol className="ev-under">{prelims.map((p,k)=>{const a=fighter(p.fighterA),b=fighter(p.fighterB);
+     const side=(x:Fighter,team:string|undefined,ids:string[]|undefined,cls:string)=>p.tag?<span className={`ev-under-side ${cls}`}><b><Flag code={x.flag}/>{team}</b><small>{ids!.map(id=>fighter(id).name).join(' / ')}</small></span>:<button className={`ev-under-side ${cls}`} style={brandStyle(x)} onClick={()=>onFighter(x.id)}><b><Flag code={x.flag}/>{x.name}</b><small>{x.rank===0?'Champion':`#${x.rank}`}</small></button>;
+     return <li key={`${p.fighterA}-${p.fighterB}`}>{side(a,p.tag?.a,p.tag?.teamA,'is-a')}<span className="ev-under-staff"><b>Bout {main.length+k+1}</b><small>{p.tag?'2v2 tag':divisionName(p.division)}</small></span>{side(b,p.tag?.b,p.tag?.teamB,'is-b')}</li>;})}</ol></section>}
+   {main.length===0&&<p className="ev-empty">No world-tier fighters were fit to fight this week. Start the event to move on.</p>}
   </section>
-  <div className="en-startbar"><span>{liveCount?`${liveCount} fight${liveCount===1?'':'s'} to simulate live · ${main.length-liveCount} skipped`:'All fights skipped: you will go straight to the results'}{stats.made>0&&<small> · Picks {stats.correct}/{stats.made}</small>}</span><button className="btn btn-primary" onClick={()=>onStart([...watch].sort((x,y)=>x-y))}><Play size={16} fill="currentColor"/> Start event</button></div>
+  <div className="ev-start" role="region" aria-label="Start the event">
+   <p><b>{liveCount?`${liveCount} fight${liveCount===1?'':'s'} to simulate live`:'All fights skipped'}</b><span>{liveCount?` · ${main.length-liveCount} skipped`:' · you will go straight to the results'}</span>{stats.made>0&&<span className="ev-start-picks">Picks {stats.correct}/{stats.made}</span>}</p>
+   <button className="bd-btn bd-btn-next" onClick={()=>onStart([...watch].sort((x,y)=>x-y))}><Play size={16} fill="currentColor"/>Start event</button>
+  </div>
  </div>;
+}
+
+function ResultSide({f,won,lost,rank,side,onFighter}:{f:Fighter;won:boolean;lost:boolean;rank:number;side:'a'|'b';onFighter:(id:string)=>void}){
+ return <button className={`rs-side rs-${side} ${won?'is-won':lost?'is-lost':''}`} style={brandStyle(f)} onClick={()=>onFighter(f.id)}>
+  <Lamp tone={won?'win':lost?'loss':'off'} label={won?'Win':lost?'Loss':'Draw'}/>
+  <span><b><Flag code={f.flag}/>{f.name}</b><small>{won?'Win':lost?'Loss':'Draw'} · {rank===0?'Champion':`#${rank}`}</small></span>
+ </button>;
 }
 
 /** Results of the most recent event's world-tier card. */
@@ -132,15 +157,17 @@ export function LastEvent({world,onFight,onFighter}:{world:World;onFight:(id:str
  const ordered=world.lastCardIds?fights:[...fights].sort((x,y)=>Number(!!y.titleFight||!!y.kind)-Number(!!x.titleFight||!!x.kind)||(isTopDivision(x.division)?0:1)-(isTopDivision(y.division)?0:1)||Math.min(x.rankBeforeA,x.rankBeforeB)-Math.min(y.rankBeforeA,y.rankBeforeB));
  const name=`${fights[0].eventName||'Last event'} · ${fights[0].year}`;
  const other=world.lastCardIds?0:world.lastFightIds.length-fights.length;
- return <section className="panel en-results"><Heading eyebrow="LAST EVENT · RESULTS" title={name} end={<span className="subtle-tag">{fights.length} WORLD-TIER BOUTS{other>0?` · ${other} CONTINENTAL IN THE CALENDAR`:''}</span>}/>
-  {ordered.map((f,i)=>{const a=world.fighters.find(x=>x.id===f.fighterA)!,b=world.fighters.find(x=>x.id===f.fighterB)!;const w=f.winnerId;
-   if(f.tag){const t=f.tag;return <div key={f.id} className={`res-row tag-result ${i===0?'is-main':''}`}>
-    <div className={`res-side ${t.winner===t.a?'won':t.winner?'lost':''}`}><span><b><Flag code={a.flag}/>{t.a}</b><small>{t.teamA.map(id=>world.fighters.find(x=>x.id===id)?.name).join(' / ')}</small></span></div>
-    <button className="res-mid" onClick={()=>onFight(f.id)}><b>{f.method}</b><small>2v2 TAG · R{f.finishRound}</small><span>Team fight report <ChevronRight size={12}/></span></button>
-    <div className={`res-side right ${t.winner===t.b?'won':t.winner?'lost':''}`}><span><b><Flag code={b.flag}/>{t.b}</b><small>{t.teamB.map(id=>world.fighters.find(x=>x.id===id)?.name).join(' / ')}</small></span></div>
-   </div>;}
-   return <div key={f.id} className={`res-row ${i===0?'is-main':''}`}><button className={`res-side ${w===a.id?'won':w?'lost':''}`} onClick={()=>onFighter(a.id)}><Avatar fighter={a} size={40}/><span><b><Flag code={a.flag}/>{a.name}</b><small>{w===a.id?'WIN':w?'LOSS':'DRAW'} · {f.rankBeforeA===0?'C':`#${f.rankBeforeA}`}</small></span></button>
-    <button className="res-mid" onClick={()=>onFight(f.id)}><b>{f.method}</b><small>R{f.finishRound} · {f.finishTime}</small>{f.titleChange&&<em><Crown size={11}/> NEW {f.belt?BELT_SHORT[f.belt].toUpperCase():'CHAMPION'}</em>}{f.underdogVictory&&!f.titleChange&&<em>UPSET</em>}<span>Report <ChevronRight size={12}/></span></button>
-    <button className={`res-side right ${w===b.id?'won':w?'lost':''}`} onClick={()=>onFighter(b.id)}><span><b><Flag code={b.flag}/>{b.name}</b><small>{w===b.id?'WIN':w?'LOSS':'DRAW'} · {f.rankBeforeB===0?'C':`#${f.rankBeforeB}`}</small></span><Avatar fighter={b} size={40}/></button></div>;})}
+ return <section className="bd rs" aria-labelledby="rs-title"><ModuleHead id="rs-title" title={<>Results · {name}</>} code={`${fights.length} world-tier bout${fights.length===1?'':'s'}${other>0?` · ${other} continental in the Calendar`:''}`}/>
+  <ol className="rs-list">{ordered.map((f,i)=>{const a=world.fighters.find(x=>x.id===f.fighterA)!,b=world.fighters.find(x=>x.id===f.fighterB)!;const w=f.winnerId;
+   if(f.tag){const t=f.tag;return <li key={f.id} className={`rs-row ${i===0?'is-main':''}`}>
+    <span className={`rs-side rs-a ${t.winner===t.a?'is-won':t.winner?'is-lost':''}`}><Lamp tone={t.winner===t.a?'win':t.winner?'loss':'off'} label={t.winner===t.a?'Win':t.winner?'Loss':'Draw'}/><span><b><Flag code={a.flag}/>{t.a}</b><small>{t.teamA.map(id=>world.fighters.find(x=>x.id===id)?.name).join(' / ')}</small></span></span>
+    <button className="rs-mid" onClick={()=>onFight(f.id)}><b>{f.method}</b><small>2v2 tag · R{f.finishRound}</small><span className="rs-report">Team report<ChevronRight size={12}/></span></button>
+    <span className={`rs-side rs-b ${t.winner===t.b?'is-won':t.winner?'is-lost':''}`}><Lamp tone={t.winner===t.b?'win':t.winner?'loss':'off'} label={t.winner===t.b?'Win':t.winner?'Loss':'Draw'}/><span><b><Flag code={b.flag}/>{t.b}</b><small>{t.teamB.map(id=>world.fighters.find(x=>x.id===id)?.name).join(' / ')}</small></span></span>
+   </li>;}
+   return <li key={f.id} className={`rs-row ${i===0?'is-main':''}`}>
+    <ResultSide f={a} won={w===a.id} lost={!!w&&w!==a.id} rank={f.rankBeforeA} side="a" onFighter={onFighter}/>
+    <button className="rs-mid" onClick={()=>onFight(f.id)}><b>{f.method}</b><small>R{f.finishRound} · {f.finishTime}</small>{f.titleChange&&<em>New {f.belt?BELT_SHORT[f.belt]:'champion'}</em>}{f.underdogVictory&&!f.titleChange&&<em className="is-upset">Upset</em>}<span className="rs-report">Report<ChevronRight size={12}/></span></button>
+    <ResultSide f={b} won={w===b.id} lost={!!w&&w!==b.id} rank={f.rankBeforeB} side="b" onFighter={onFighter}/>
+   </li>;})}</ol>
  </section>;
 }

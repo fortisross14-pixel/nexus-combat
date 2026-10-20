@@ -1,0 +1,147 @@
+/* Home: the arena board. Modules butt together on 1px seams like scoreboard panels. */
+.hm{display:grid;gap:20px}
+
+/* Next event: the board's headline row */
+.hm-next{display:grid;grid-template-columns:minmax(230px,.85fr) minmax(0,2.3fr) minmax(210px,.75fr);background:var(--n0);border:var(--seam);border-top:3px solid var(--ev-primary,var(--n6))}
+.hm-event{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:24px 24px 26px}
+.hm-event h1{margin-top:6px;font:900 clamp(44px,4.6vw,72px)/.88 var(--font-display);letter-spacing:.01em;text-transform:uppercase;color:var(--ev-primary,var(--n10));overflow-wrap:break-word}
+.hm-event-meta{font-size:14px;line-height:1.45;color:var(--n8)}
+.hm-event-meta b{color:var(--n10);font-weight:700}
+.hm-event-tag{font-size:14px;color:var(--n7);font-style:italic}
+.hm-bout{display:flex;flex-direction:column;justify-content:center;padding:24px 8px;border-left:var(--seam);border-right:var(--seam)}
+.hm-bout-empty{max-width:46ch;margin:auto;text-align:center;font-size:15px;line-height:1.5;color:var(--n8)}
+.hm-go{display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px;background:var(--n0) var(--dot-plate)}
+.hm-go-label{display:inline-flex;align-items:center;gap:8px;font:700 12px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--n8)}
+.hm-go-when{white-space:normal;line-height:1.05}
+.hm-go .bd-btn{width:100%;justify-content:flex-start}
+.hm-go-main{min-height:48px;font-size:14px}
+.hm-go-main svg:last-child{margin-left:auto}
+
+/* World titles */
+.hm-titles{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--n4);border:var(--seam)}
+.hm-title{display:flex;flex-direction:column;background:var(--n2);min-width:0}
+.hm-title-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:var(--seam)}
+.hm-title-head h2{font:800 24px/1 var(--font-display);letter-spacing:.04em;text-transform:uppercase;color:var(--brand)}
+.hm-title-head span{margin-left:auto;font-size:13px;color:var(--n7);font-style:italic}
+.hm-title-body{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px;padding:18px}
+.hm-title-body.is-vacant{grid-template-columns:1fr;min-height:150px;place-items:center}
+.hm-title-champ{display:flex;align-items:center;gap:16px;padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;min-width:0}
+.hm-title-champ .avatar{flex:none;box-shadow:0 0 0 1px var(--n5)}
+.hm-title-champ>span{display:grid;gap:5px;min-width:0}
+.hm-title-label{display:inline-flex;align-items:center;gap:7px;font:700 12px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--title)}
+.hm-title-champ strong{font:800 clamp(26px,2.6vw,36px)/.95 var(--font-display);text-transform:uppercase;color:var(--n10);overflow-wrap:break-word}
+.hm-title-champ:hover strong{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px;text-decoration-color:var(--n6)}
+.hm-title-champ small{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--n8);font-variant-numeric:tabular-nums}
+.hm-title-figs{display:grid;grid-template-columns:repeat(3,auto);gap:4px 22px;margin:0;text-align:right}
+.hm-title-figs div{display:grid;gap:6px}
+.hm-title-figs dt{order:2;font:700 11px var(--font-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--n7)}
+.hm-title-figs dd{margin:0}
+.hm-title-foot{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:auto;padding:12px 18px;border-top:var(--seam);font-size:13px;color:var(--n8)}
+.hm-title-foot .bd-link{font-size:13px}
+
+/* Crowns and contracts */
+.hm-crowns{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--n4);border:var(--seam)}
+.hm-crown{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:0;background:var(--n2);color:inherit;text-align:left;cursor:pointer;min-width:0}
+.hm-crown:hover:not(:disabled){background:var(--n3)}
+.hm-crown:disabled{cursor:default;opacity:1}
+.hm-crown-name{font:700 12px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--n7)}
+.hm-crown-holder{display:flex;align-items:center;gap:12px;min-width:0}
+.hm-crown-holder .avatar{flex:none;box-shadow:0 0 0 1px var(--n5)}
+.hm-crown-holder>span{display:grid;gap:3px;min-width:0}
+.hm-crown-holder b{display:inline-flex;align-items:center;gap:7px;font:800 20px/1.05 var(--font-display);text-transform:uppercase;color:var(--n10)}
+.hm-crown-holder.is-open{display:grid;gap:3px}
+.hm-crown-holder.is-open b{color:var(--n8)}
+.hm-crown-holder small{font-size:13px;color:var(--n7)}
+.hm-crown-next{margin-top:auto;font-size:12px;color:var(--n8)}
+
+/* Lower board */
+.hm-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:20px;align-items:start}
+.hm-standings-cols{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--n4)}
+.hm-ladder{background:var(--n2)}
+.hm-ladder th,.hm-ladder td{padding-left:12px;padding-right:12px}
+.hm-rank{width:48px;font:800 20px/1 var(--font-board);color:var(--n10)}
+.hm-rank .is-champ{color:var(--title)}
+.hm-ladder td b{font-weight:700;color:var(--n10)}
+.hm-tourney{display:flex;align-items:center;gap:10px}
+.hm-tourney>span{display:grid;gap:2px}
+.hm-tourney b{font:800 18px/1 var(--font-display);text-transform:uppercase;color:var(--n10)}
+.hm-tourney small{font-size:12px;color:var(--n7)}
+
+@media(max-width:1180px){
+ .hm-next{grid-template-columns:minmax(0,1fr) minmax(220px,.42fr);grid-template-areas:"event go" "bout bout"}
+ .hm-event{grid-area:event}.hm-go{grid-area:go}
+ .hm-bout{grid-area:bout;border:0;border-top:var(--seam);padding:22px 16px}
+ .hm-grid{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+ .hm-next{grid-template-columns:1fr;grid-template-areas:"event" "bout" "go"}
+ .hm-event{padding:18px 16px 16px}
+ .hm-go{border-top:var(--seam)}
+ .hm-titles,.hm-crowns{grid-template-columns:1fr}
+ .hm-title-body{grid-template-columns:1fr}
+ .hm-title-figs{justify-content:start;text-align:left}
+ .hm-title-head span{display:none}
+ .hm-standings-cols{grid-template-columns:1fr}
+ .hm .bd-table th,.hm .bd-table td{padding-left:12px;padding-right:12px}
+}
+
+/* Your corner and pick'em */
+.hm-corner{margin-top:20px}
+.bd-note{padding:14px 16px;font-size:14px;line-height:1.55;color:var(--n8);max-width:70ch}
+.bd-note b{color:var(--n10)}
+.bd-feed{list-style:none;margin:0;padding:0;border-top:var(--seam)}
+.bd-feed li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:baseline;gap:10px;padding:10px 16px;border-bottom:var(--seam);font-size:13px;color:var(--n8)}
+.bd-feed li:last-child{border-bottom:0}
+.bd-feed li>span{min-width:0}
+.bd-feed li b{color:var(--n10)}
+.bd-feed time{font-variant-numeric:tabular-nums;color:var(--n7)}
+.hm .is-title,.hm-corner .is-title{color:var(--title);font-weight:700;letter-spacing:.04em}
+.hm-last{display:inline-flex;align-items:center;gap:8px}
+.hm-picks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;margin:0;background:var(--n4);border-bottom:var(--seam)}
+.hm-picks div{display:grid;gap:6px;padding:14px 16px;background:var(--n0) var(--dot-plate)}
+.hm-picks dt{order:2;font:700 11px var(--font-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--n7)}
+.hm-picks dd{margin:0}
+@media(max-width:760px){.hm-picks{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* The next-event board stacks each corner (portrait over name) so long names keep whole words. */
+.hm-bout .corner-id,.hm-bout .corner-b .corner-id{flex-direction:column;gap:12px}
+.hm-bout .corner-a .corner-id{align-items:flex-end}.hm-bout .corner-b .corner-id{align-items:flex-start}
+.hm-bout .corner-name{font-size:clamp(24px,2.2vw,32px);overflow-wrap:normal}
+.hm-bout .staff{margin:0 12px}
+.hm-grid>:only-child{grid-column:1/-1}
+.hm-title-vacant{display:grid;gap:10px;justify-items:center;text-align:center}
+.hm-title-vacant p{font-size:14px;color:var(--n8)}
+.hm-ladder td:nth-child(2){white-space:nowrap}
+
+/* Title board: champion over a strip of lit figures. */
+.hm-title-body{grid-template-columns:1fr;gap:0;padding:0}
+.hm-title-champ{padding:18px}
+.hm-title-figs{grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--n4);border-top:var(--seam);text-align:left}
+.hm-title-figs div{padding:12px 18px;background:var(--n0) var(--dot-plate)}
+.hm-title-body.is-vacant{padding:24px}
+.hm-standings-cols .hm-ladder caption{padding-left:12px}
+.hm-stack{display:grid;gap:20px}
+.hm-grid td span small{white-space:nowrap}
+
+@media(max-width:760px){.hm-title-figs div{padding:10px 12px}.hm-title-figs .bn-l{font-size:30px}}
+
+/* Review fixes: words are set in type, Doto stays on numerals; the plate sits only under lit figures. */
+.hm-go{background:var(--n0)}
+.hm-go-when{font:900 clamp(36px,3.2vw,50px)/.9 var(--font-display);letter-spacing:.02em;text-transform:uppercase;color:var(--amber)}
+.hm-vacant{font:900 clamp(44px,4vw,60px)/1 var(--font-display);letter-spacing:.08em;text-transform:uppercase;color:var(--n7)}
+.hm-title-champ .hm-title-label{margin-top:2px}
+.hm-form-col{width:96px}
+@media(max-width:760px){
+ .hm-form-col{display:none}
+ .hm-tourneys thead{display:none}
+ .hm-tourneys tr{display:grid;grid-template-columns:1fr 1fr;border-bottom:var(--seam)}
+ .hm-tourneys tr:last-child{border-bottom:0}
+ .hm-tourneys td{border:0;padding:10px 12px}
+ .hm-tourneys td:first-child{grid-column:1/-1;padding-bottom:0}
+ .hm-picks{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .hm-picks div{padding:10px 8px}
+ .hm-picks .bn-m{font-size:20px}
+}
+
+.hm-go-count{display:flex;align-items:baseline;gap:10px}
+.hm-go-unit{font:900 28px/1 var(--font-display);text-transform:uppercase;color:var(--amber)}

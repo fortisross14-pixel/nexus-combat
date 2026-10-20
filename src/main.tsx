@@ -5,4 +5,5 @@ import {App} from './App';
 import './style.css';
 import './premium.css';
 import './watch-showcase.css';
+import './arena.css';
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);

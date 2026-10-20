@@ -138,7 +138,7 @@ export function Avatar({fighter,size=58,className=''}:Props){
  return <svg className={`avatar ${divisionFrame} ${className}`} width={size} height={size} viewBox="0 0 360 400" role="img" aria-label={`${fighter.name}, ${fighter.style}, illustrated portrait`}>
   <defs>
    <linearGradient id={f('bg')} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#2b4453"/><stop offset=".6" stopColor="#1b2c39"/><stop offset="1" stopColor="#111a26"/></linearGradient>
-   <clipPath id={f('card')}><rect width="360" height="400" rx="22"/></clipPath>
+   <clipPath id={f('card')}><rect width="360" height="400"/></clipPath>
    <filter id={f('skin')} colorInterpolationFilters={ci}><feColorMatrix type="matrix" values={skinMatrix(L.skin)}/></filter>
    {hairName&&<filter id={f('hair')} colorInterpolationFilters={ci}><feColorMatrix type="matrix" values={tintMatrix(L.hairColor,LAYERS[hairName].lum??100)}/></filter>}
    {beardName&&<filter id={f('beard')} colorInterpolationFilters={ci}><feColorMatrix type="matrix" values={tintMatrix(L.hairColor,LAYERS[beardName].lum??100)}/></filter>}

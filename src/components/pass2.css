@@ -5,14 +5,14 @@
 .tape-side{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;background:transparent;border:0;color:inherit;cursor:pointer;min-width:0}
 .tape-side strong{font-size:19px;line-height:1.1}.tape-side small{color:#9db2c2;font-size:12px}
 .tape-title{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:30px}
-.tape-title span{font-size:11px;letter-spacing:1.6px;font-weight:800;color:var(--mute)}.tape-title strong{font:900 30px 'Barlow Condensed',sans-serif;color:#d9e9f0}.tape-title small{font-size:11px;color:#7d95a6}
+.tape-title span{font-size:11px;letter-spacing:1.6px;font-weight:800;color:var(--mute)}.tape-title strong{font:900 30px 'Big Shoulders Display',sans-serif;color:#d9e9f0}.tape-title small{font-size:11px;color:#7d95a6}
 .tape-belts{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}.tape-belts i{font-style:normal;display:inline-flex;gap:4px;align-items:center;font-size:11px;font-weight:800;letter-spacing:.5px;color:#f0c46f;border:1px solid #f0c46f55;border-radius:20px;padding:2px 7px}
 .tape-form{display:flex;gap:3px}.tape-form i{font-style:normal;width:19px;height:19px;border-radius:5px;display:grid;place-items:center;font-size:11px;font-weight:900;color:#08151f}
 .tape-form .form-W{background:var(--mint)}.tape-form .form-L{background:#ef7f88}.tape-form .form-D{background:#a8b4bf}.tape-form em{font-size:11px;color:#7d92a3}
 .tape-section-label{font-size:11px;font-weight:800;letter-spacing:1.3px;color:var(--dim);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.tape-section-label small{letter-spacing:0;font-weight:600;color:var(--mute)}
 .tape-chances{background:var(--panel2);border:1px solid #27465b;border-radius:13px;padding:14px}
 .tape-bar{display:flex;height:30px;border-radius:9px;overflow:hidden;background:#1d3446}
-.tape-bar i{font-style:normal;display:flex;align-items:center;font:900 15px 'Barlow Condensed',sans-serif;color:var(--panel);padding:0 10px;transition:width .5s}
+.tape-bar i{font-style:normal;display:flex;align-items:center;font:900 15px 'Big Shoulders Display',sans-serif;color:var(--panel);padding:0 10px;transition:width .5s}
 .tape-a-fill{background:linear-gradient(90deg,#4bc6a2,#8ae9ce)}.tape-b-fill{background:linear-gradient(90deg,var(--gold),#d9884f);justify-content:flex-end}.tape-draw-fill{background:#6d8293}
 .tape-methods{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.tape-methods>div{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;font-size:12px;color:#a9bdcb}.tape-methods>div.right{justify-content:flex-end;text-align:right}
 .tape-methods small{width:100%;font-size:11px;letter-spacing:.8px;color:#7a92a3;text-transform:uppercase}.tape-methods b{color:#fff}
@@ -37,7 +37,7 @@
 
 /* ───────── Live broadcast: floating action text ───────── */
 .arena-bubbles{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:visible}
-.action-bubble{position:absolute;bottom:38%;transform:translateX(-50%);white-space:nowrap;font:900 15px 'Barlow Condensed','DM Sans',sans-serif;letter-spacing:.3px;padding:3px 10px;border-radius:999px;border:1px solid currentColor;background:#06121dcc;text-shadow:0 1px 6px #000a;animation:bubble-float 1.7s ease-out forwards}
+.action-bubble{position:absolute;bottom:38%;transform:translateX(-50%);white-space:nowrap;font:900 15px 'Big Shoulders Display','Archivo',sans-serif;letter-spacing:.3px;padding:3px 10px;border-radius:999px;border:1px solid currentColor;background:#06121dcc;text-shadow:0 1px 6px #000a;animation:bubble-float 1.7s ease-out forwards}
 .action-bubble.cat-strike{color:#ff6f7d}
 .action-bubble.cat-grapple{color:#6fb9ff}
 .action-bubble.cat-sub{color:#63e39a}
@@ -82,7 +82,7 @@
 
 /* ───────── Event identities ───────── */
 .event-logo{flex:none;filter:drop-shadow(0 4px 14px #0007)}
-.event-wordmark{font-family:'Barlow Condensed','DM Sans',sans-serif;font-weight:900;text-transform:uppercase;display:inline-block;line-height:1}
+.event-wordmark{font-family:'Big Shoulders Display','Archivo',sans-serif;font-weight:900;text-transform:uppercase;display:inline-block;line-height:1}
 .hero-brand{display:flex;align-items:center;justify-content:center;gap:18px;margin:12px 0 6px}.hero-brand.left{justify-content:flex-start;margin:8px 0}
 .hero-brand h1,.hero-brand h2{margin:0}
 .ev-tagline{color:var(--ev-secondary,#9fd)!important;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:800;font-style:normal}
